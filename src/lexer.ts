@@ -1,16 +1,6 @@
-export enum TokenType {
-    BRACE_OPEN,
-    BRACE_CLOSE,
+import { Token, TokenType } from './token';
 
-    PARENTHESES_OPEN,
-    PARENTHESES_CLOSE,
-
-    SEMICOLON,
-
-    KEYWORD,
-    IDENTIFIER,
-    LITERAL_INTEGER
-}
+export { Token, TokenType }
 
 const SINGLE_TOKENS: Map<string, TokenType> = new Map([
     ['{', TokenType.BRACE_OPEN],
@@ -53,7 +43,7 @@ function test(code: string, startIndex: number, currentIndex: number): Token[] {
 
 }
 
-export function lex(code: string): TokenType[] {
+export function lex(code: string): Token[] {
     let tokens = [];
     let startIndex = 0;
     let currentIndex = 0;
@@ -67,19 +57,4 @@ export function lex(code: string): TokenType[] {
         }
     }
     return tokens;
-}
-
-export class Token {
-    type: TokenType
-    value: string;
-    constructor(type: TokenType, value: string) {
-        this.type = type;
-        this.value = value;
-    }
-    static ofType(tokenType: TokenType): Token {
-        return new Token(tokenType, undefined);
-    }
-    static ofTypeAndValue(tokenType: TokenType, value: string): Token {
-        return new Token(tokenType, value);
-    }
 }
