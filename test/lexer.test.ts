@@ -9,6 +9,12 @@ describe('lexer', function () {
             expect(Token.ofTypeAndValue(TokenType.KEYWORD, "int")).to.eql(tokens[0]);
             expect(Token.ofTypeAndValue(TokenType.IDENTIFIER, "x")).to.eql(tokens[1]);
         });
+
+        /**
+         * int main() {
+         *  return 2;
+         * }
+         */
         it('Another simple case', function () {
             const tokens = lex("int main() {\n\treturn 2;\n}");
             expect(9).to.equal(tokens.length);
