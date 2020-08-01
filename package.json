@@ -1,14 +1,19 @@
 {
     "scripts": {
+        "build": "webpack",
         "test": "mocha -r ts-node/register test/*.ts"
     },
     "devDependencies": {
         "@types/mocha": "^8.0.1",
         "chai": "*",
         "mocha": "*",
-        "ts-node": "^8.10.2"
+        "ts-loader": "^8.0.2",
+        "ts-node": "^8.10.2",
+        "typescript": "^3.9.7",
+        "webpack": "^4.44.1",
+        "webpack-cli": "^3.3.12"
     },
     "dependencies": {
-        "typescript": "^3.9.7"
+        "@types/node": "^14.0.27"
     }
 }
