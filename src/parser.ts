@@ -1,100 +1,143 @@
 import { Token, TokenType } from './token';
 
-export function parse(tokens: Token[]): AST {
-    const stack: Stack<Node> = new Stack<Node>();
-    stack.push(new ProgramNode());
-    let index = 0;
-    while (index < tokens.length) {
-        const token = tokens[index];
-        index++;
-        switch (token.type) {
-            case TokenType.PARENTHESES_OPEN:
-                //function arguments
-                break;
-            case TokenType.PARENTHESES_CLOSE:
-                //end of functional arguments
-                break;
-            case TokenType.BRACE_OPEN:
-                //opening of function body
-                break;
-            case TokenType.BRACE_CLOSE:
-                //closing of function body, let's pop node
-                let functionDeclaration: FunctionDeclaration = <FunctionDeclaration>stack.pop();
-                const programNode: ProgramNode = <ProgramNode>stack.peek();
-                programNode.setMain(functionDeclaration);
-                break;
-            case TokenType.SEMICOLON:
-                //end of a statement
-                break;
-            case TokenType.KEYWORD:
-                //uhhhh
-                if (token.isPrimitiveType()) {
-                    //let's just say for now that this is always the return type of a function
-                    const functionName: string = tokens[index++].value;
-                    index += 3;
-                    stack.push(new FunctionDeclaration(functionName));
-                } else if (token.value === "return") {
-                    stack.push(new ReturnStatement());
-                    stack.push(new Expression());
-                }
-                break;
-            case TokenType.IDENTIFIER:
-                //UHHHHH
-                break;
-            case TokenType.LITERAL_INTEGER:
-                const value = token.value;
-                const expression: Expression = <Expression>stack.pop();
-                expression.setConstant(new Constant(parseInt(value)));
-                const statement: ReturnStatement = <ReturnStatement>stack.pop();
-                statement.setExpression(expression);
-                functionDeclaration = <FunctionDeclaration>stack.peek();
-                functionDeclaration.addStatement(statement);
-                break;
+//stateful crawler
+class TokenCrawler {
+
+    private index: number = 0;
+    private readonly tokens: Token[];
+
+    constructor(tokens: Token[]) {
+        this.tokens = tokens;;
+    }
+
+    private parseExpression(): Expression {
+        let expression: Expression;
+        while (this.index < this.tokens.length) {
+            const token = this.tokens[this.index];
+            this.index++;
+            switch (token.type) {
+                case TokenType.UNARY_NEGATION:
+                    return new UnaryOperation(UnaryOperator.NEGATION, this.parseExpression());
+                case TokenType.UNARY_BITWISE_COMPLEMENT:
+                    return new UnaryOperation(UnaryOperator.BITWISE_COMPLEMENT, this.parseExpression());
+                case TokenType.UNARY_LOGICAL_NEGATION:
+                    return new UnaryOperation(UnaryOperator.LOGICAL_NEGATION, this.parseExpression());
+                case TokenType.IDENTIFIER:
+                    //UHHHHH
+                    break;
+                case TokenType.LITERAL_INTEGER:
+                    const value = token.value;
+                    return new Constant(parseInt(value));
+            }
         }
     }
-    return new AST(<ProgramNode>stack.pop());
+
+    /**
+     * TODO: there is some confusing logic around statements and expressions and knowing how to detect the end of either
+     */
+    private parseStatement(): Statement {
+        let statement: Statement;
+        while (this.index < this.tokens.length) {
+            const token = this.tokens[this.index];
+            this.index++;
+            if (token.type === TokenType.SEMICOLON) {
+                return statement;
+            }
+            if (token.type == TokenType.KEYWORD && token.value === "return") {
+                //is there an expression, or does it simply terminate?
+                if (this.tokens[this.index].type !== TokenType.SEMICOLON) {
+                    //RETURNED EXPRESSION!
+                    statement = new ReturnStatement(this.parseExpression());
+                } else {
+                    statement = new ReturnStatement(null);
+                }
+            }
+        }
+    }
+
+    private parseFunctionBody(): Statement[] {
+        const statements: Statement[] = [];
+        while (this.index < this.tokens.length) {
+            const token = this.tokens[this.index];
+            this.index++;
+            if (token.type == TokenType.BRACE_CLOSE) {
+                return statements;
+            } else {
+                this.index--;
+                statements.push(this.parseStatement());
+            }
+        }
+    }
+
+    parseProgram(): ProgramNode {
+        let mainFunction: FunctionDeclaration;
+        while (this.index < this.tokens.length) {
+            const token = this.tokens[this.index];
+            this.index++;
+            if (token.type == TokenType.KEYWORD) {
+                if (token.isPrimitiveType()) {
+                    //for now I'm just going to assume this is the main and only function, will improve later
+                    const functionName: string = this.tokens[this.index++].value;
+                    this.index += 3;
+                    const statements: Statement[] = this.parseFunctionBody();
+                    mainFunction = new FunctionDeclaration(functionName, statements);
+                    break;
+                }
+            }
+        }
+        return new ProgramNode(mainFunction);
+    }
+
 }
 
-export abstract class Node {
-
+export function parse(tokens: Token[]): AST {
+    const tokenCrawler: TokenCrawler = new TokenCrawler(tokens);
+    return new AST(tokenCrawler.parseProgram());
 }
 
-export class Return extends Node {
-    private expression: Expression;
-}
+export interface Node { }
 
-export class Constant extends Node {
+export interface Expression extends Node { }
+
+export interface Statement extends Node { }
+
+export class Constant implements Expression {
     readonly value: number;
     constructor(value: number) {
-        super();
         this.value = value;
     }
 }
 
-export class Expression extends Node {
-    constant: Constant;
-    public setConstant(constant: Constant) {
-        this.constant = constant;
-    }
+export enum UnaryOperator {
+    NEGATION,
+    BITWISE_COMPLEMENT,
+    LOGICAL_NEGATION,
 }
 
-export abstract class Statement extends Node { }
-
-export class ReturnStatement extends Statement {
-    expression: Expression
-    public setExpression(expression: Expression) {
+export class UnaryOperation implements Expression {
+    readonly operator: UnaryOperator;
+    readonly expression: Expression;
+    constructor(operator: UnaryOperator, expression: Expression) {
+        this.operator = operator;
         this.expression = expression;
     }
 }
 
-export class FunctionDeclaration extends Node {
+
+export class ReturnStatement implements Statement {
+    public expression: Expression;
+    constructor(expression: Expression) {
+        this.expression = expression;
+    }
+}
+
+export class FunctionDeclaration implements Node {
     readonly name: string;
     statements: Statement[];
 
-    public constructor(name: string) {
-        super();
+    public constructor(name: string, statements: Statement[]) {
         this.name = name;
-        this.statements = [];
+        this.statements = statements;
     }
 
     public addStatement(statement: Statement) {
@@ -102,10 +145,10 @@ export class FunctionDeclaration extends Node {
     }
 }
 
-export class ProgramNode extends Node {
+export class ProgramNode implements Node {
     mainFunction: FunctionDeclaration;
-    public setMain(functionDeclaration: FunctionDeclaration) {
-        this.mainFunction = functionDeclaration;
+    constructor(mainFunction: FunctionDeclaration) {
+        this.mainFunction = mainFunction;;
     }
 }
 

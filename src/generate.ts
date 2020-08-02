@@ -1,4 +1,4 @@
-import { AST, ProgramNode, FunctionDeclaration, ReturnStatement, Statement } from './parser';
+import { AST, ProgramNode, FunctionDeclaration, ReturnStatement, Statement, Constant } from './parser';
 
 //TODO maybe not a string?
 export function generate(ast: AST): string {
@@ -20,6 +20,9 @@ function generateFunctionParts(functionDeclaration: FunctionDeclaration): string
 
 function generateStatement(statement: Statement): string {
     if (statement instanceof ReturnStatement) {
-        return "movl    $" + statement.expression.constant.value + ", %eax\nret";
+        if (statement.expression instanceof Constant) {
+            const constant = <Constant>statement.expression;
+            return "movl    $" + constant.value + ", %eax\nret";
+        }
     }
 }

@@ -9,8 +9,8 @@ movl    $2, %eax
 ret`;
 
 
-describe('parser', function () {
-    describe('parser()', function () {
+describe('generator', function () {
+    describe('generate()', function () {
         it('A simple case', function () {
             const tokens: Token[] = lex("int main() {\n\treturn 2;\n}");
             const ast: AST = parse(tokens);

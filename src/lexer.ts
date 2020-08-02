@@ -7,7 +7,10 @@ const SINGLE_TOKENS: Map<string, TokenType> = new Map([
     ['}', TokenType.BRACE_CLOSE],
     ['(', TokenType.PARENTHESES_OPEN],
     [')', TokenType.PARENTHESES_CLOSE],
-    [';', TokenType.SEMICOLON]
+    [';', TokenType.SEMICOLON],
+    ['-', TokenType.UNARY_NEGATION],
+    ['~', TokenType.UNARY_BITWISE_COMPLEMENT],
+    ['!', TokenType.UNARY_LOGICAL_NEGATION]
 ]);
 
 const WHITE_SPACE = [' ', '\n', '\t'];
