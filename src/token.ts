@@ -7,9 +7,13 @@ export enum TokenType {
 
     SEMICOLON,
 
-    UNARY_NEGATION,
+    MINUS, //TODO for now this is subtraction and negation, is that gonna be weird?
     UNARY_BITWISE_COMPLEMENT,
     UNARY_LOGICAL_NEGATION,
+
+    BINARY_ADDITION,
+    BINARY_MULTIPLICATION,
+    BINARY_DIVISION,
 
     KEYWORD,
     IDENTIFIER,
@@ -31,5 +35,28 @@ export class Token {
     }
     isPrimitiveType() {
         return this.type === TokenType.KEYWORD && this.value === "int";
+    }
+    isOperator(): boolean {
+        switch (this.type) {
+            case TokenType.MINUS:
+            case TokenType.UNARY_LOGICAL_NEGATION:
+            case TokenType.UNARY_BITWISE_COMPLEMENT:
+            case TokenType.BINARY_ADDITION:
+            case TokenType.BINARY_MULTIPLICATION:
+            case TokenType.BINARY_DIVISION:
+                return true;
+            default:
+                return false;
+        }
+    }
+    isUnaryOperator(): boolean {
+        switch (this.type) {
+            case TokenType.MINUS:
+            case TokenType.UNARY_LOGICAL_NEGATION:
+            case TokenType.UNARY_BITWISE_COMPLEMENT:
+                return true;
+            default:
+                return false;
+        }
     }
 }

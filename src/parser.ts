@@ -1,5 +1,15 @@
 import { Token, TokenType } from './token';
 
+//grammar
+/**
+ * <PROGRAM> = <FUNCTION>
+ * <FUNCTION> = "int" <IDENTIFIER>"(){" <STATEMENT[]> "}""
+ * <STATEMENT> = return <EXPRESSION>;
+ * <EXPRESSION> = <TERM> { ("+" | "-") <TERM> }
+ * <TERM> = <FACTOR> { ("*" | "/") <FACTOR> }
+ * <FACTOR> = "(" <EXPRESSION> ")" | <UNARY_OPERATOR> <FACTOR> | <LITERAL>
+ */
+
 //stateful crawler
 class TokenCrawler {
 
@@ -10,25 +20,43 @@ class TokenCrawler {
         this.tokens = tokens;;
     }
 
-    private parseExpression(): Expression {
-        let expression: Expression;
-        while (this.index < this.tokens.length) {
-            const token = this.tokens[this.index];
+    parseFactor(): Factor {
+        const token = this.tokens[this.index];
+        if (token.type == TokenType.PARENTHESES_OPEN) {
             this.index++;
-            switch (token.type) {
-                case TokenType.UNARY_NEGATION:
-                    return new UnaryOperation(UnaryOperator.NEGATION, this.parseExpression());
-                case TokenType.UNARY_BITWISE_COMPLEMENT:
-                    return new UnaryOperation(UnaryOperator.BITWISE_COMPLEMENT, this.parseExpression());
-                case TokenType.UNARY_LOGICAL_NEGATION:
-                    return new UnaryOperation(UnaryOperator.LOGICAL_NEGATION, this.parseExpression());
-                case TokenType.IDENTIFIER:
-                    //UHHHHH
-                    break;
-                case TokenType.LITERAL_INTEGER:
-                    const value = token.value;
-                    return new Constant(parseInt(value));
-            }
+            const expression = this.parseExpression();
+            this.index++; //once again for the end parenthesis (should we check?)
+            return new ExpressionFactor(expression);
+        } else if (token.isUnaryOperator()) {
+            this.index++;
+            return new UnaryFactor(unary(token.type), this.parseFactor());
+        } else if (token.type == TokenType.LITERAL_INTEGER) {
+            this.index++;
+            return new LiteralFactor(parseInt(token.value));
+        }
+    }
+
+    parseTerm(): Term {
+        const factor: Factor = this.parseFactor();
+        const tokenType: TokenType = this.tokens[this.index].type;
+        if (tokenType === TokenType.BINARY_MULTIPLICATION || tokenType === TokenType.BINARY_DIVISION) {
+            this.index++;
+            const otherFactor = this.parseFactor();
+            return new BinaryTerm(tokenType === TokenType.BINARY_MULTIPLICATION ? BinaryOperator.MULTIPLICATION : BinaryOperator.DIVISION, factor, otherFactor)
+        } else {
+            return new SimpleTerm(factor);
+        }
+    }
+
+    private parseExpression(): Expression {
+        const term: Term = this.parseTerm();
+        const tokenType: TokenType = this.tokens[this.index].type;
+        if (tokenType === TokenType.BINARY_ADDITION || tokenType === TokenType.MINUS) {
+            this.index++;
+            const otherTerm = this.parseTerm();
+            return new BinaryExpression(tokenType === TokenType.BINARY_ADDITION ? BinaryOperator.ADDITION : BinaryOperator.SUBTRACTION, term, otherTerm);
+        } else {
+            return new SimpleExpression(term);
         }
     }
 
@@ -97,14 +125,68 @@ export function parse(tokens: Token[]): AST {
 
 export interface Node { }
 
+export interface Factor extends Node { }
+
+export interface Term extends Node { }
+
 export interface Expression extends Node { }
 
 export interface Statement extends Node { }
 
-export class Constant implements Expression {
+export class LiteralFactor implements Factor {
     readonly value: number;
     constructor(value: number) {
         this.value = value;
+    }
+}
+
+export class ExpressionFactor implements Factor {
+    readonly expression: Expression;
+    constructor(expression: Expression) {
+        this.expression = expression;
+    }
+}
+
+export class SimpleTerm implements Term {
+    readonly factor: Factor;
+    constructor(factor: Factor) {
+        this.factor = factor;
+    }
+}
+
+export class SimpleExpression implements Expression {
+    readonly term: Term;
+    constructor(term: Term) {
+        this.term = term;
+    }
+}
+
+export enum BinaryOperator {
+    ADDITION,
+    SUBTRACTION,
+    MULTIPLICATION,
+    DIVISION
+}
+
+export class BinaryTerm implements Term {
+    readonly operator: BinaryOperator;
+    readonly leftHandSide: Factor;
+    readonly rightHandSide: Factor;
+    constructor(operator: BinaryOperator, leftHandSide: Factor, rightHandSide: Factor) {
+        this.operator = operator;
+        this.leftHandSide = leftHandSide;
+        this.rightHandSide = rightHandSide;
+    }
+}
+
+export class BinaryExpression implements Expression {
+    readonly operator: BinaryOperator;
+    readonly leftHandSide: Term;
+    readonly rightHandSide: Term;
+    constructor(operator: BinaryOperator, leftHandSide: Term, rightHandSide: Term) {
+        this.operator = operator;
+        this.leftHandSide = leftHandSide;
+        this.rightHandSide = rightHandSide;
     }
 }
 
@@ -114,12 +196,23 @@ export enum UnaryOperator {
     LOGICAL_NEGATION,
 }
 
-export class UnaryOperation implements Expression {
+function unary(tokenType: TokenType): UnaryOperator {
+    switch (tokenType) {
+        case TokenType.MINUS:
+            return UnaryOperator.NEGATION;
+        case TokenType.UNARY_BITWISE_COMPLEMENT:
+            return UnaryOperator.BITWISE_COMPLEMENT;
+        case TokenType.UNARY_LOGICAL_NEGATION:
+            return UnaryOperator.LOGICAL_NEGATION;
+    }
+}
+
+export class UnaryFactor implements Factor {
     readonly operator: UnaryOperator;
-    readonly expression: Expression;
-    constructor(operator: UnaryOperator, expression: Expression) {
+    readonly factor: Factor;
+    constructor(operator: UnaryOperator, factor: Factor) {
         this.operator = operator;
-        this.expression = expression;
+        this.factor = factor;
     }
 }
 

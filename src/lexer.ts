@@ -8,9 +8,14 @@ const SINGLE_TOKENS: Map<string, TokenType> = new Map([
     ['(', TokenType.PARENTHESES_OPEN],
     [')', TokenType.PARENTHESES_CLOSE],
     [';', TokenType.SEMICOLON],
-    ['-', TokenType.UNARY_NEGATION],
+
     ['~', TokenType.UNARY_BITWISE_COMPLEMENT],
-    ['!', TokenType.UNARY_LOGICAL_NEGATION]
+    ['!', TokenType.UNARY_LOGICAL_NEGATION],
+
+    ['+', TokenType.BINARY_ADDITION],
+    ['-', TokenType.MINUS],
+    ['*', TokenType.BINARY_MULTIPLICATION],
+    ['/', TokenType.BINARY_DIVISION]
 ]);
 
 const WHITE_SPACE = [' ', '\n', '\t'];
@@ -37,6 +42,7 @@ function test(code: string, startIndex: number, currentIndex: number): Token[] {
                 }
         }
 
+        //works for now?
         if (SINGLE_TOKENS.has(char_at)) {
             tokens.push(Token.ofType(SINGLE_TOKENS.get(char_at)))
         }

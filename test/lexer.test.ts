@@ -33,7 +33,7 @@ describe('lexer', function () {
             const tokens = lex("return -1;");
             expect(4).to.equal(tokens.length);
             expect(Token.ofTypeAndValue(TokenType.KEYWORD, "return")).to.eql(tokens[0]);
-            expect(Token.ofType(TokenType.UNARY_NEGATION)).to.eql(tokens[1]);
+            expect(Token.ofType(TokenType.MINUS)).to.eql(tokens[1]);
             expect(Token.ofTypeAndValue(TokenType.LITERAL_INTEGER, "1")).to.eql(tokens[2]);
             expect(Token.ofType(TokenType.SEMICOLON)).to.eql(tokens[3]);
         });
@@ -54,6 +54,38 @@ describe('lexer', function () {
             expect(Token.ofType(TokenType.UNARY_BITWISE_COMPLEMENT)).to.eql(tokens[1]);
             expect(Token.ofTypeAndValue(TokenType.LITERAL_INTEGER, "1")).to.eql(tokens[2]);
             expect(Token.ofType(TokenType.SEMICOLON)).to.eql(tokens[3]);
+        });
+
+        it('Binary Addition', function () {
+            const tokens = lex("1 + 3");
+            expect(3).to.equal(tokens.length);
+            expect(Token.ofTypeAndValue(TokenType.LITERAL_INTEGER, "1")).to.eql(tokens[0]);
+            expect(Token.ofType(TokenType.BINARY_ADDITION)).to.eql(tokens[1]);
+            expect(Token.ofTypeAndValue(TokenType.LITERAL_INTEGER, "3")).to.eql(tokens[2]);
+        });
+
+        it('Binary Subtraction', function () {
+            const tokens = lex("1 - 3");
+            expect(3).to.equal(tokens.length);
+            expect(Token.ofTypeAndValue(TokenType.LITERAL_INTEGER, "1")).to.eql(tokens[0]);
+            expect(Token.ofType(TokenType.MINUS)).to.eql(tokens[1]);
+            expect(Token.ofTypeAndValue(TokenType.LITERAL_INTEGER, "3")).to.eql(tokens[2]);
+        });
+
+        it('Binary Multiplication', function () {
+            const tokens = lex("1 * 3");
+            expect(3).to.equal(tokens.length);
+            expect(Token.ofTypeAndValue(TokenType.LITERAL_INTEGER, "1")).to.eql(tokens[0]);
+            expect(Token.ofType(TokenType.BINARY_MULTIPLICATION)).to.eql(tokens[1]);
+            expect(Token.ofTypeAndValue(TokenType.LITERAL_INTEGER, "3")).to.eql(tokens[2]);
+        });
+
+        it('Binary Division', function () {
+            const tokens = lex("1 / 3");
+            expect(3).to.equal(tokens.length);
+            expect(Token.ofTypeAndValue(TokenType.LITERAL_INTEGER, "1")).to.eql(tokens[0]);
+            expect(Token.ofType(TokenType.BINARY_DIVISION)).to.eql(tokens[1]);
+            expect(Token.ofTypeAndValue(TokenType.LITERAL_INTEGER, "3")).to.eql(tokens[2]);
         });
     });
 });
