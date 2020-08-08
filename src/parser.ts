@@ -71,7 +71,7 @@ class TokenCrawler {
             if (token.type === TokenType.SEMICOLON) {
                 return statement;
             }
-            if (token.type == TokenType.KEYWORD && token.value === "return") {
+            if (token.type == TokenType.RETURN) {
                 //is there an expression, or does it simply terminate?
                 if (this.tokens[this.index].type !== TokenType.SEMICOLON) {
                     //RETURNED EXPRESSION!
@@ -102,15 +102,13 @@ class TokenCrawler {
         while (this.index < this.tokens.length) {
             const token = this.tokens[this.index];
             this.index++;
-            if (token.type == TokenType.KEYWORD) {
-                if (token.isPrimitiveType()) {
-                    //for now I'm just going to assume this is the main and only function, will improve later
-                    const functionName: string = this.tokens[this.index++].value;
-                    this.index += 3;
-                    const statements: Statement[] = this.parseFunctionBody();
-                    mainFunction = new FunctionDeclaration(functionName, statements);
-                    break;
-                }
+            if (token.type == TokenType.INT) {
+                //for now I'm just going to assume this is the main and only function, will improve later
+                const functionName: string = this.tokens[this.index++].value;
+                this.index += 3;
+                const statements: Statement[] = this.parseFunctionBody();
+                mainFunction = new FunctionDeclaration(functionName, statements);
+                break;
             }
         }
         return new ProgramNode(mainFunction);
