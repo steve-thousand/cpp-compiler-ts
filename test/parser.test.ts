@@ -182,6 +182,54 @@ describe('parser', function () {
             )).to.eql(tree);
         });
 
+        it('Mixing binary math with parentheses', function () {
+            const tokens = lex("int main() {\n\treturn (2 + 3) * 4;\n}");
+            const tree = parse(tokens);
+            expect(new ast.AST(
+                new ast.Program(
+                    new ast.Func(
+                        "main", [
+                        new ast.Return(
+                            new ast.BinOp(
+                                ast.BinaryOperator.MULTIPLICATION,
+                                new ast.BinOp(
+                                    ast.BinaryOperator.ADDITION,
+                                    new ast.Constant(2),
+                                    new ast.Constant(3)
+                                ),
+                                new ast.Constant(4),
+                            )
+                        )
+                    ]
+                    )
+                )
+            )).to.eql(tree);
+        });
+
+        it('Mixing binary math with parentheses again', function () {
+            const tokens = lex("int main() {\n\treturn (5 + 4) / 3;\n}");
+            const tree = parse(tokens);
+            expect(new ast.AST(
+                new ast.Program(
+                    new ast.Func(
+                        "main", [
+                        new ast.Return(
+                            new ast.BinOp(
+                                ast.BinaryOperator.DIVISION,
+                                new ast.BinOp(
+                                    ast.BinaryOperator.ADDITION,
+                                    new ast.Constant(5),
+                                    new ast.Constant(4)
+                                ),
+                                new ast.Constant(3),
+                            )
+                        )
+                    ]
+                    )
+                )
+            )).to.eql(tree);
+        });
+
         it('Return AND', function () {
             const tokens = lex("int main() {\n\treturn 2 && 3;\n}");
             const tree = parse(tokens);
