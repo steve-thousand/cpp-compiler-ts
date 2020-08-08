@@ -43,6 +43,7 @@ export enum TokenType {
     /*
     VARIABLE
     */
+
     IDENTIFIER,
     LITERAL_INTEGER
 }
