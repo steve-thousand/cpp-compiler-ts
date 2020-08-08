@@ -5,7 +5,15 @@ export enum BinaryOperator {
     ADDITION,
     SUBTRACTION,
     MULTIPLICATION,
-    DIVISION
+    DIVISION,
+    EQUAL,
+    NOT_EQUAL,
+    GREATER_THAN,
+    GREATER_THAN_OR_EQUAL,
+    LESS_THAN,
+    LESS_THAN_OR_EQUAL,
+    OR,
+    AND
 }
 
 export enum UnaryOperator {

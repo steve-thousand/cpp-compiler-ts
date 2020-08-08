@@ -14,7 +14,39 @@ function unary(tokenType: TokenType): ast.UnaryOperator {
     }
 }
 
-//grammar
+function binary(tokenType: TokenType): ast.BinaryOperator {
+    switch (tokenType) {
+        case TokenType.BINARY_ADDITION:
+            return ast.BinaryOperator.ADDITION;
+        case TokenType.MINUS:
+            return ast.BinaryOperator.SUBTRACTION;
+        case TokenType.BINARY_MULTIPLICATION:
+            return ast.BinaryOperator.MULTIPLICATION;
+        case TokenType.BINARY_DIVISION:
+            return ast.BinaryOperator.DIVISION;
+        case TokenType.BINARY_EQUAL:
+            return ast.BinaryOperator.EQUAL;
+        case TokenType.BINARY_NOT_EQUAL:
+            return ast.BinaryOperator.NOT_EQUAL;
+        case TokenType.BINARY_GREATER_THAN:
+            return ast.BinaryOperator.GREATER_THAN;
+        case TokenType.BINARY_GREATER_THAN_OR_EQUAL:
+            return ast.BinaryOperator.GREATER_THAN_OR_EQUAL;
+        case TokenType.BINARY_LESS_THAN:
+            return ast.BinaryOperator.LESS_THAN;
+        case TokenType.BINARY_LESS_THAN_OR_EQUAL:
+            return ast.BinaryOperator.LESS_THAN_OR_EQUAL;
+        case TokenType.BINARY_OR:
+            return ast.BinaryOperator.OR;
+        case TokenType.BINARY_AND:
+            return ast.BinaryOperator.AND;
+    }
+}
+
+function tokenIs(tokenType: TokenType, ...tokenTypes: TokenType[]) {
+    return tokenTypes.indexOf(tokenType) > -1;
+}
+
 /**
  * <PROGRAM> = <FUNCTION>
  * <FUNCTION> = "int" <IDENTIFIER>"(){" <STATEMENT[]> "}""
@@ -27,114 +59,97 @@ function unary(tokenType: TokenType): ast.UnaryOperator {
  * <TERM> = <FACTOR> { ("*" | "/") <FACTOR> }
  * <FACTOR> = "(" <EXPRESSION> ")" | <UNARY_OPERATOR> <FACTOR> | <LITERAL>
  */
-
-//stateful crawler
-class TokenCrawler {
-
-    private index: number = 0;
-    private readonly tokens: Token[];
-
-    constructor(tokens: Token[]) {
-        this.tokens = tokens;;
-    }
-
-    parseFactor(): ast.Expression {
-        const token = this.tokens[this.index];
-        if (token.type == TokenType.PARENTHESES_OPEN) {
-            this.index++;
-            const expression = this.parseExpression();
-            this.index++; //once again for the end parenthesis (should we check?)
-            return expression;
-        } else if (token.isUnaryOperator()) {
-            this.index++;
-            return new ast.UnOp(unary(token.type), this.parseFactor());
-        } else if (token.type == TokenType.LITERAL_INTEGER) {
-            this.index++;
-            return new ast.Constant(parseInt(token.value));
+const GRAMMAR = {
+    PROGRAM: function (tokens: Token[]) {
+        const functionDeclaration = this.FUNCTION(tokens);
+        return new ast.Program(functionDeclaration);
+    },
+    FUNCTION: function (tokens: Token[]) {
+        if (tokens[0].type === TokenType.INT) {
+            tokens.shift();
+            const identifier = tokens.shift().value;
+            tokens.shift(); //"("
+            tokens.shift(); //")"
+            tokens.shift(); //"{"
+            const func = new ast.Func(identifier, [this.STATEMENT(tokens)]);
+            tokens.shift(); //"}"
+            return func;
         }
-    }
-
-    parseTerm(): ast.Expression {
-        const factor: ast.Node = this.parseFactor();
-        const tokenType: TokenType = this.tokens[this.index].type;
-        if (tokenType === TokenType.BINARY_MULTIPLICATION || tokenType === TokenType.BINARY_DIVISION) {
-            this.index++;
-            const otherFactor = this.parseFactor();
-            return new ast.BinOp(tokenType === TokenType.BINARY_MULTIPLICATION ? ast.BinaryOperator.MULTIPLICATION : ast.BinaryOperator.DIVISION, factor, otherFactor)
+    },
+    STATEMENT: function (tokens: Token[]) {
+        if (tokens[0].type === TokenType.RETURN) {
+            tokens.shift();
+            const expression = this.EXPRESSION(tokens);
+            tokens.shift(); //";"
+            return new ast.Return(expression);
+        }
+    },
+    EXPRESSION: function (tokens: Token[]) {
+        const logical = this.LOGICAL_AND_EXP(tokens);
+        if (tokenIs(tokens[0].type, TokenType.BINARY_OR)) {
+            tokens.shift();
+            return new ast.BinOp(ast.BinaryOperator.OR, logical, this.LOGICAL_AND_EXP(tokens));
         } else {
-            return factor
+            return logical;
         }
-    }
-
-    private parseExpression(): ast.Expression {
-        const term: ast.Node = this.parseTerm();
-        const tokenType: TokenType = this.tokens[this.index].type;
-        if (tokenType === TokenType.BINARY_ADDITION || tokenType === TokenType.MINUS) {
-            this.index++;
-            const otherTerm = this.parseTerm();
-            return new ast.BinOp(tokenType === TokenType.BINARY_ADDITION ? ast.BinaryOperator.ADDITION : ast.BinaryOperator.SUBTRACTION, term, otherTerm);
+    },
+    LOGICAL_AND_EXP: function (tokens: Token[]) {
+        const equality = this.EQUALITY_EXP(tokens);
+        if (tokenIs(tokens[0].type, TokenType.BINARY_AND)) {
+            tokens.shift();
+            return new ast.BinOp(ast.BinaryOperator.AND, equality, this.RELATIONAL_EXP(tokens));
+        } else {
+            return equality;
+        }
+    },
+    EQUALITY_EXP: function (tokens: Token[]) {
+        const relational = this.RELATIONAL_EXP(tokens);
+        if (tokenIs(tokens[0].type, TokenType.BINARY_EQUAL, TokenType.BINARY_NOT_EQUAL)) {
+            return new ast.BinOp(binary(tokens.shift().type), relational, this.RELATIONAL_EXP(tokens));
+        } else {
+            return relational;
+        }
+    },
+    RELATIONAL_EXP: function (tokens: Token[]) {
+        const additive = this.ADDITIVE_EXP(tokens);
+        if (tokenIs(tokens[0].type, TokenType.BINARY_LESS_THAN, TokenType.BINARY_LESS_THAN_OR_EQUAL, TokenType.BINARY_GREATER_THAN, TokenType.BINARY_GREATER_THAN_OR_EQUAL)) {
+            return new ast.BinOp(binary(tokens.shift().type), additive, this.RELATIONAL_EXP(tokens));
+        } else {
+            return additive;
+        }
+    },
+    ADDITIVE_EXP: function (tokens: Token[]) {
+        const term = this.TERM(tokens);
+        if (tokenIs(tokens[0].type, TokenType.BINARY_ADDITION, TokenType.MINUS)) {
+            return new ast.BinOp(binary(tokens.shift().type), term, this.RELATIONAL_EXP(tokens));
         } else {
             return term;
         }
-    }
-
-    /**
-     * TODO: there is some confusing logic around statements and expressions and knowing how to detect the end of either
-     */
-    private parseStatement(): ast.Statement {
-        let statement: ast.Statement;
-        while (this.index < this.tokens.length) {
-            const token = this.tokens[this.index];
-            this.index++;
-            if (token.type === TokenType.SEMICOLON) {
-                return statement;
-            }
-            if (token.type == TokenType.RETURN) {
-                //is there an expression, or does it simply terminate?
-                if (this.tokens[this.index].type !== TokenType.SEMICOLON) {
-                    //RETURNED EXPRESSION!
-                    statement = new ast.Return(this.parseExpression());
-                } else {
-                    statement = new ast.Return(null);
-                }
-            }
+    },
+    TERM: function (tokens: Token[]) {
+        const factor = this.FACTOR(tokens);
+        if (tokenIs(tokens[0].type, TokenType.BINARY_MULTIPLICATION, TokenType.BINARY_DIVISION)) {
+            return new ast.BinOp(binary(tokens.shift().type), factor, this.RELATIONAL_EXP(tokens));
+        } else {
+            return factor;
+        }
+    },
+    FACTOR: function (tokens: Token[]) {
+        if (tokens[0].type === TokenType.PARENTHESES_OPEN) {
+            tokens.shift(); //"("
+            const expression = this.EXPRESSION(tokens);
+            tokens.shift(); //")"
+            return expression;
+        } else if (unary(tokens[0].type) !== undefined) {
+            const operatorToken = tokens.shift();
+            const expression = this.EXPRESSION(tokens);
+            return new ast.UnOp(unary(operatorToken.type), expression);
+        } else {
+            return new ast.Constant(parseInt(tokens.shift().value));
         }
     }
-
-    private parseFunctionBody(): ast.Statement[] {
-        const statements: ast.Statement[] = [];
-        while (this.index < this.tokens.length) {
-            const token = this.tokens[this.index];
-            this.index++;
-            if (token.type == TokenType.BRACE_CLOSE) {
-                return statements;
-            } else {
-                this.index--;
-                statements.push(this.parseStatement());
-            }
-        }
-    }
-
-    parseProgram(): ast.Program {
-        let mainFunction: ast.FunctionDeclaration;
-        while (this.index < this.tokens.length) {
-            const token = this.tokens[this.index];
-            this.index++;
-            if (token.type == TokenType.INT) {
-                //for now I'm just going to assume this is the main and only function, will improve later
-                const functionName: string = this.tokens[this.index++].value;
-                this.index += 3;
-                const statements: ast.Statement[] = this.parseFunctionBody();
-                mainFunction = new ast.Func(functionName, statements);
-                break;
-            }
-        }
-        return new ast.Program(mainFunction);
-    }
-
 }
 
 export function parse(tokens: Token[]): ast.AST {
-    const tokenCrawler: TokenCrawler = new TokenCrawler(tokens);
-    return new ast.AST(tokenCrawler.parseProgram());
+    return new ast.AST(GRAMMAR.PROGRAM(tokens));
 }
