@@ -1,6 +1,17 @@
 import { ast } from './parser';
+import { count } from 'console';
 
 const FOUR_SPACES = "    ";
+
+class UniqueIdGenerator {
+    private count: number = 0;
+    get(): number {
+        this.count++;
+        return this.count;
+    }
+}
+
+const uniq = new UniqueIdGenerator();
 
 //TODO maybe not a string? stream it?
 export function generate(ast: ast.AST): string {
@@ -12,7 +23,7 @@ export function generate(ast: ast.AST): string {
 function generateFunctionParts(functionDeclaration: ast.Func): string {
     const generatedParts = [];
     generatedParts.push(" .globl _" + functionDeclaration.name);
-    generatedParts.push(label("_" + functionDeclaration.name))
+    generatedParts.push(label(functionDeclaration.name))
     for (let statement of functionDeclaration.statements) {
         generatedParts.push(generateStatement(statement));
     }
@@ -33,6 +44,7 @@ function generateStatement(statement: ast.Statement): string {
 function generateExpression(expression: ast.Expression) {
     const generatedParts = [];
     if (expression instanceof ast.BinOp) {
+        const id = uniq.get();
         generatedParts.push(generateExpression(expression.left))
         generatedParts.push(line("push", "%rax"))
         generatedParts.push(generateExpression(expression.right))
@@ -82,6 +94,27 @@ function generateExpression(expression: ast.Expression) {
                 generatedParts.push(line("movl", "$0", "%eax"));
                 generatedParts.push(line("setge", "%al"));
                 break;
+            case ast.BinaryOperator.OR:
+                generatedParts.push(line("cmpl", "$0", "%eax"))
+                generatedParts.push(line("je", "_clause" + id))
+                generatedParts.push(line("movl", "$1", "%eax"));
+                generatedParts.push(line("jmp", "_end" + id))
+                generatedParts.push(label("clause" + id))
+                generatedParts.push(line("movl", "%ecx", "%eax"))
+                generatedParts.push(line("cmpl", "$0", "%eax"))
+                generatedParts.push(line("movl", "$0", "%eax"))
+                generatedParts.push(line("setne", "%al"));
+                generatedParts.push(label("end" + id))
+                break;
+            case ast.BinaryOperator.AND:
+                generatedParts.push(line("cmpl", "$0", "%eax"))
+                generatedParts.push(line("je", "_end" + id))
+                generatedParts.push(line("movl", "%ecx", "%eax"))
+                generatedParts.push(line("cmpl", "$0", "%eax"))
+                generatedParts.push(line("movl", "$0", "%eax"))
+                generatedParts.push(line("setne", "%al"));
+                generatedParts.push(label("end" + id))
+                break;
         }
     } else if (expression instanceof ast.UnOp) {
         const operator: ast.UnaryOperator = expression.operator;
@@ -108,14 +141,14 @@ function generateExpression(expression: ast.Expression) {
 }
 
 function label(label: string) {
-    return label + ":";
+    return "_" + label + ":";
 }
 
 function line(instruction, ...args): string {
     const parts = [];
     parts.push(FOUR_SPACES);
     parts.push(instruction);
-    parts.push(FOUR_SPACES);
+    parts.push(' '.repeat(8 - instruction.length));
     parts.push(args.join(", "));
     return parts.join("");
 }
