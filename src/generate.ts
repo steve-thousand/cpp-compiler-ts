@@ -23,7 +23,7 @@ export function generate(ast: ast.AST): string {
 function generateFunctionParts(functionDeclaration: ast.Func): string {
     const generatedParts = [];
     generatedParts.push(" .globl _" + functionDeclaration.name);
-    generatedParts.push(label(functionDeclaration.name))
+    generatedParts.push(label("_" + functionDeclaration.name))
     for (let statement of functionDeclaration.statements) {
         generatedParts.push(generateStatement(statement));
     }
@@ -99,12 +99,12 @@ function generateExpression(expression: ast.Expression) {
                 generatedParts.push(line("je", "_clause" + id))
                 generatedParts.push(line("movl", "$1", "%eax"));
                 generatedParts.push(line("jmp", "_end" + id))
-                generatedParts.push(label("clause" + id))
+                generatedParts.push(label("_clause" + id))
                 generatedParts.push(line("movl", "%ecx", "%eax"))
                 generatedParts.push(line("cmpl", "$0", "%eax"))
                 generatedParts.push(line("movl", "$0", "%eax"))
                 generatedParts.push(line("setne", "%al"));
-                generatedParts.push(label("end" + id))
+                generatedParts.push(label("_end" + id))
                 break;
             case ast.BinaryOperator.AND:
                 generatedParts.push(line("cmpl", "$0", "%eax"))
@@ -113,7 +113,7 @@ function generateExpression(expression: ast.Expression) {
                 generatedParts.push(line("cmpl", "$0", "%eax"))
                 generatedParts.push(line("movl", "$0", "%eax"))
                 generatedParts.push(line("setne", "%al"));
-                generatedParts.push(label("end" + id))
+                generatedParts.push(label("_end" + id))
                 break;
         }
     } else if (expression instanceof ast.UnOp) {
@@ -141,7 +141,7 @@ function generateExpression(expression: ast.Expression) {
 }
 
 function label(label: string) {
-    return "_" + label + ":";
+    return label + ":";
 }
 
 function line(instruction, ...args): string {
