@@ -3,11 +3,6 @@ import { lex, Token } from '../src/lexer';
 import { parse, ast } from '../src/parser';
 import { generate } from '../src/generate';
 
-const return2 = ` .globl _main
-_main:
-movl    $2, %eax
-ret`;
-
 
 describe('generator', function () {
     describe('generate()', function () {
@@ -15,7 +10,12 @@ describe('generator', function () {
             const tokens: Token[] = lex("int main() {\n\treturn 2;\n}");
             const tree: ast.AST = parse(tokens);
             const generated = generate(tree);
-            expect(return2).to.equal(generated);
+            expect(
+                " .globl _main\n" +
+                "_main:\n" +
+                "    movl    $2, %eax\n" +
+                "    ret     "
+            ).to.equal(generated);
         });
         it('Negation', function () {
             const tokens: Token[] = lex("int main() {\n\treturn -5;\n}");
@@ -24,9 +24,9 @@ describe('generator', function () {
             expect(
                 " .globl _main\n" +
                 "_main:\n" +
-                "movl    $5, %eax\n" +
-                "neg    %eax\n" +
-                "ret"
+                "    movl    $5, %eax\n" +
+                "    neg     %eax\n" +
+                "    ret     "
             ).to.equal(generated);
         });
         it('Bitwise complement', function () {
@@ -36,9 +36,9 @@ describe('generator', function () {
             expect(
                 " .globl _main\n" +
                 "_main:\n" +
-                "movl    $5, %eax\n" +
-                "xor    %eax, 0xFFFF\n" +
-                "ret"
+                "    movl    $5, %eax\n" +
+                "    xor     %eax, 0xFFFF\n" +
+                "    ret     "
             ).to.equal(generated);
         });
         it('Logical negation', function () {
@@ -48,11 +48,11 @@ describe('generator', function () {
             expect(
                 " .globl _main\n" +
                 "_main:\n" +
-                "movl    $5, %eax\n" +
-                "cmpl    $0, %eax\n" +
-                "movl    $0, %eax\n" +
-                "sete    %al\n" +
-                "ret"
+                "    movl    $5, %eax\n" +
+                "    cmpl    $0, %eax\n" +
+                "    movl    $0, %eax\n" +
+                "    sete    %al\n" +
+                "    ret     "
             ).to.equal(generated);
         });
     });
