@@ -33,6 +33,8 @@ export enum TokenType {
     BINARY_GREATER_THAN,
     BINARY_GREATER_THAN_OR_EQUAL,
 
+    ASSIGNMENT,
+
     /*
     KEYWORDS
     */
@@ -63,6 +65,8 @@ const CONSTANT_TOKENS = {
     "+": TokenType.BINARY_ADDITION,
     "*": TokenType.BINARY_MULTIPLICATION,
     "/": TokenType.BINARY_DIVISION,
+
+    "=": TokenType.ASSIGNMENT,
 
     "&&": TokenType.BINARY_AND,
     "||": TokenType.BINARY_OR,
@@ -99,31 +103,6 @@ export class Token {
     static isConstantToken(value: string): Token {
         if (value in CONSTANT_TOKENS) {
             return Token.ofType(CONSTANT_TOKENS[value]);
-        }
-    }
-
-    isOperator(): boolean {
-        switch (this.type) {
-            case TokenType.MINUS:
-            case TokenType.UNARY_LOGICAL_NEGATION:
-            case TokenType.UNARY_BITWISE_COMPLEMENT:
-            case TokenType.BINARY_ADDITION:
-            case TokenType.BINARY_MULTIPLICATION:
-            case TokenType.BINARY_DIVISION:
-                return true;
-            default:
-                return false;
-        }
-    }
-
-    isUnaryOperator(): boolean {
-        switch (this.type) {
-            case TokenType.MINUS:
-            case TokenType.UNARY_LOGICAL_NEGATION:
-            case TokenType.UNARY_BITWISE_COMPLEMENT:
-                return true;
-            default:
-                return false;
         }
     }
 }

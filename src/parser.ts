@@ -40,6 +40,8 @@ function binary(tokenType: TokenType): ast.BinaryOperator {
             return ast.BinaryOperator.OR;
         case TokenType.BINARY_AND:
             return ast.BinaryOperator.AND;
+        case TokenType.ASSIGNMENT:
+            return ast.BinaryOperator.ASSIGNMENT;
     }
 }
 
@@ -50,14 +52,15 @@ function tokenIs(tokenType: TokenType, ...tokenTypes: TokenType[]) {
 /**
  * <PROGRAM> = <FUNCTION>
  * <FUNCTION> = "int" <IDENTIFIER>"(){" <STATEMENT[]> "}""
- * <STATEMENT> = return <EXPRESSION>;
- * <EXPRESSION> = <LOGICAL_AND_EXP> { "||" <LOGICAL_AND_EXP }
+ * <STATEMENT> = return <EXPRESSION>; | <EXPRESSION>; | "int" IDENTIFIER {"=" <EXPRESSION>}
+ * <EXPRESSION> = IDENTIFIER "=" <EXPRESSION> | <LOGICAL_OR_EXP>
+ * <LOGICAL_OR_EXP> = <LOGICAL_AND_EXP> { "||" <LOGICAL_AND_EXP }
  * <LOGICAL_AND_EXP> = <EQUALITY_EXP> { "&&" <EQUALITY_EXP> }
  * <EQUALITY_EXP> = <RELATIONAL_EXP> { ("!=" | "==") <RELATIONAL_EXP> }
  * <RELATIONAL_EXP> = <ADDITIVE_EXP> { ("<" | ">" | "<=" | ">=") <ADDITIVE_EXP> }
  * <ADDITIVE_EXP> = <TERM> { ("+" | "-") <TERM> }
  * <TERM> = <FACTOR> { ("*" | "/") <FACTOR> }
- * <FACTOR> = "(" <EXPRESSION> ")" | <UNARY_OPERATOR> <FACTOR> | <LITERAL>
+ * <FACTOR> = "(" <EXPRESSION> ")" | <UNARY_OPERATOR> <FACTOR> | <LITERAL> | IDENTIFIER
  */
 const GRAMMAR = {
     PROGRAM: function (tokens: Token[]) {
@@ -71,26 +74,61 @@ const GRAMMAR = {
             tokens.shift(); //"("
             tokens.shift(); //")"
             tokens.shift(); //"{"
-            const func = new ast.Func(identifier, [this.STATEMENT(tokens)]);
+            const statements: ast.Statement[] = [];
+            // @ts-ignore
+            while (tokens[0].type !== TokenType.BRACE_CLOSE) {
+                statements.push(this.STATEMENT(tokens));
+            }
             tokens.shift(); //"}"
+            const func = new ast.Func(identifier, statements);
             return func;
         }
     },
     STATEMENT: function (tokens: Token[]) {
+        let expression;
         if (tokens[0].type === TokenType.RETURN) {
             tokens.shift();
-            const expression = this.EXPRESSION(tokens);
+            expression = this.EXPRESSION(tokens);
             tokens.shift(); //";"
             return new ast.Return(expression);
         }
+
+        expression = this.EXPRESSION(tokens);
+        if (expression) {
+            tokens.shift(); //";"
+            return new ast.ExpStatement(expression);
+        }
+
+        if (tokens[0].type === TokenType.INT) {
+            tokens.shift();
+            const identifier = tokens.shift();
+            expression = undefined;
+            // @ts-ignore
+            if (tokens[0].type === TokenType.ASSIGNMENT) {
+                tokens.shift(); //"="
+                expression = this.EXPRESSION(tokens);
+            }
+            const declaration = new ast.Declaration(identifier.value, expression);
+            tokens.shift(); //";"
+            return declaration;
+        }
     },
     EXPRESSION: function (tokens: Token[]) {
-        const logical = this.LOGICAL_AND_EXP(tokens);
+        if (tokens[0].type === TokenType.IDENTIFIER && tokens[1].type === TokenType.ASSIGNMENT) {
+            const identifier = tokens.shift();
+            tokens.shift(); //"="
+            return new ast.Assignment(identifier.value, this.EXPRESSION(tokens));
+        } else {
+            return this.LOGICAL_OR_EXP(tokens);
+        }
+    },
+    LOGICAL_OR_EXP: function (tokens: Token[]) {
+        const equality = this.LOGICAL_AND_EXP(tokens);
         if (tokenIs(tokens[0].type, TokenType.BINARY_OR)) {
             tokens.shift();
-            return new ast.BinOp(ast.BinaryOperator.OR, logical, this.LOGICAL_AND_EXP(tokens));
+            return new ast.BinOp(ast.BinaryOperator.OR, equality, this.LOGICAL_AND_EXP(tokens));
         } else {
-            return logical;
+            return equality;
         }
     },
     LOGICAL_AND_EXP: function (tokens: Token[]) {
@@ -144,8 +182,10 @@ const GRAMMAR = {
             const operatorToken = tokens.shift();
             const expression = this.EXPRESSION(tokens);
             return new ast.UnOp(unary(operatorToken.type), expression);
-        } else {
+        } else if (tokens[0].type === TokenType.LITERAL_INTEGER) {
             return new ast.Constant(parseInt(tokens.shift().value));
+        } else if (tokens[0].type === TokenType.IDENTIFIER) {
+            return new ast.VarReference(tokens.shift().value);
         }
     }
 }

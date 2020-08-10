@@ -1,6 +1,7 @@
 import { expect } from 'chai';
 import { lex } from '../src/lexer';
 import { parse, ast } from '../src/parser';
+import { BinOp } from '../src/ast';
 
 
 describe('parser', function () {
@@ -384,6 +385,41 @@ describe('parser', function () {
                                 new ast.Constant(3)
                             )
                         )
+                    ]
+                    )
+                )
+            )).to.eql(tree);
+        });
+
+        it('Declaration and reference', function () {
+            const tokens = lex("int main() {\n\tint a = 0; return a;\n}");
+            const tree = parse(tokens);
+            expect(new ast.AST(
+                new ast.Program(
+                    new ast.Func(
+                        "main", [
+                        new ast.Declaration("a", new ast.Constant(0)),
+                        new ast.Return(new ast.VarReference("a"))
+                    ]
+                    )
+                )
+            )).to.eql(tree);
+        });
+
+        it('Declaration, assignment and reference', function () {
+            const tokens = lex("int main() {\n\tint a = 0; a = a + 1; return a;\n}");
+            const tree = parse(tokens);
+            expect(new ast.AST(
+                new ast.Program(
+                    new ast.Func(
+                        "main", [
+                        new ast.Declaration("a", new ast.Constant(0)),
+                        new ast.ExpStatement(new ast.Assignment("a", new ast.BinOp(
+                            ast.BinaryOperator.ADDITION,
+                            new ast.VarReference("a"),
+                            new ast.Constant(1)
+                        ))),
+                        new ast.Return(new ast.VarReference("a"))
                     ]
                     )
                 )

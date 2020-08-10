@@ -13,7 +13,8 @@ export enum BinaryOperator {
     LESS_THAN,
     LESS_THAN_OR_EQUAL,
     OR,
-    AND
+    AND,
+    ASSIGNMENT
 }
 
 export enum UnaryOperator {
@@ -50,6 +51,22 @@ export class Constant extends Expression {
         this.value = value;
     }
 }
+export class Assignment extends Expression {
+    readonly identifier: string;
+    readonly expression: Expression;
+    constructor(identifier: string, expression: Expression) {
+        super();
+        this.identifier = identifier;
+        this.expression = expression;
+    }
+}
+export class VarReference extends Expression {
+    readonly identifier: string;
+    constructor(identifier: string) {
+        super();
+        this.identifier = identifier;
+    }
+}
 
 export abstract class Statement implements Node { }
 export class Return extends Statement {
@@ -59,14 +76,30 @@ export class Return extends Statement {
         this.expression = expression;
     }
 }
+export class Declaration extends Statement {
+    readonly identifier: string;
+    readonly expression: Expression;
+    constructor(identifier: string, expression?: Expression) {
+        super();
+        this.identifier = identifier;
+        this.expression = expression;
+    }
+}
+export class ExpStatement extends Statement {
+    readonly expression: Expression;
+    constructor(expression: Expression) {
+        super();
+        this.expression = expression;
+    }
+}
 
 export class FunctionDeclaration implements Node { }
 export class Func extends FunctionDeclaration {
-    readonly name: string;
+    readonly identifier: string;
     readonly statements: Statement[]
-    constructor(name: string, statements: Statement[]) {
+    constructor(identifier: string, statements: Statement[]) {
         super();
-        this.name = name;
+        this.identifier = identifier;
         this.statements = statements;
     }
 }

@@ -146,5 +146,22 @@ describe('lexer', function () {
             expect(Token.ofType(TokenType.BINARY_GREATER_THAN_OR_EQUAL)).to.eql(tokens[1]);
             expect(Token.ofTypeAndValue(TokenType.LITERAL_INTEGER, "3")).to.eql(tokens[2]);
         });
+        it('Declaration', function () {
+            const tokens = lex("int a;");
+            expect([
+                Token.ofType(TokenType.INT),
+                Token.ofTypeAndValue(TokenType.IDENTIFIER, "a"),
+                Token.ofType(TokenType.SEMICOLON)
+            ]).to.eql(tokens)
+        });
+        it('Assignment', function () {
+            const tokens = lex("int a = 1");
+            expect([
+                Token.ofType(TokenType.INT),
+                Token.ofTypeAndValue(TokenType.IDENTIFIER, "a"),
+                Token.ofType(TokenType.ASSIGNMENT),
+                Token.ofTypeAndValue(TokenType.LITERAL_INTEGER, "1")
+            ]).to.eql(tokens)
+        });
     });
 });
