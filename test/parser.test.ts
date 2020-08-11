@@ -545,5 +545,26 @@ describe('parser', function () {
                 )
             )).to.eql(tree);
         });
+
+        //this comes out to be exactly the same as the previous, which maybe is fine?
+        it('Compound assignment', function () {
+            const tokens = lex("int main() {\n\tint a = 2; a += 3; return a;\n}");
+            const tree = parse(tokens);
+            expect(new ast.AST(
+                new ast.Program(
+                    new ast.Func(
+                        "main", [
+                        new ast.Declaration("a", new ast.Constant(2)),
+                        new ast.ExpStatement(new ast.Assignment("a", new ast.BinOp(
+                            ast.BinaryOperator.ADDITION,
+                            new ast.VarReference("a"),
+                            new ast.Constant(3)
+                        ))),
+                        new ast.Return(new ast.VarReference("a"))
+                    ]
+                    )
+                )
+            )).to.eql(tree);
+        });
     });
 });

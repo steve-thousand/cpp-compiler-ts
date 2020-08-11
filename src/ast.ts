@@ -76,6 +76,12 @@ export class Assignment extends Expression {
         this.expression = expression;
     }
 }
+export class CompoundAssignment extends Assignment {
+    readonly operator: BinaryOperator;
+    constructor(identifier: string, expression: Expression, operator: BinaryOperator) {
+        super(identifier, expression);
+    }
+}
 export class VarReference extends Expression {
     readonly identifier: string;
     constructor(identifier: string) {

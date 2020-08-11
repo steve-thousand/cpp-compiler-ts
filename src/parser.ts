@@ -100,6 +100,33 @@ function isTokenAssignment(tokenType: TokenType) {
     }
 }
 
+function isCompoundAssignment(tokenType: TokenType) {
+    switch (tokenType) {
+        case TokenType.COMPOUND_ASSIGNMENT_ADDITION:
+            return ast.BinaryOperator.ADDITION;
+        case TokenType.COMPOUND_ASSIGNMENT_SUBTRACTION:
+            return ast.BinaryOperator.SUBTRACTION;
+        case TokenType.COMPOUND_ASSIGNMENT_MULTIPLICATION:
+            return ast.BinaryOperator.MULTIPLICATION;
+        case TokenType.COMPOUND_ASSIGNMENT_DIVISION:
+            return ast.BinaryOperator.DIVISION;
+        case TokenType.COMPOUND_ASSIGNMENT_MODULO:
+            return ast.BinaryOperator.MODULO;
+        case TokenType.COMPOUND_ASSIGNMENT_BITSHIFT_LEFT:
+            return ast.BinaryOperator.BITWISE_SHIFT_LEFT;
+        case TokenType.COMPOUND_ASSIGNMENT_BITSHIFT_RIGHT:
+            return ast.BinaryOperator.BITWISE_SHIFT_RIGHT;
+        case TokenType.COMPOUND_ASSIGNMENT_BITWISE_AND:
+            return ast.BinaryOperator.BITWISE_AND;
+        case TokenType.COMPOUND_ASSIGNMENT_BITWISE_OR:
+            return ast.BinaryOperator.BITWISE_OR;
+        case TokenType.COMPOUND_ASSIGNMENT_BITWISE_XOR:
+            return ast.BinaryOperator.BITWISE_XOR;
+        default:
+            return false;
+    }
+}
+
 /**
  * <PROGRAM> = <FUNCTION>
  * <FUNCTION> = "int" <IDENTIFIER>"(){" <STATEMENT[]> "}""
@@ -171,9 +198,13 @@ const GRAMMAR = {
     EXPRESSION: function (tokens: Token[]) {
         if (tokens[0].type === TokenType.IDENTIFIER && isTokenAssignment(tokens[1].type)) {
             const identifier = tokens.shift();
-            tokens.shift(); //"="
-            //TODO: how do we handle compound assignment? assignment of var reference + expression?
-            return new ast.Assignment(identifier.value, this.EXPRESSION(tokens));
+            const operator = tokens.shift(); //"="
+            const compoundOperator = isCompoundAssignment(operator.type);
+            if (compoundOperator !== false) {
+                return new ast.Assignment(identifier.value, new ast.BinOp(compoundOperator, new ast.VarReference(identifier.value), this.EXPRESSION(tokens)));
+            } else {
+                return new ast.Assignment(identifier.value, this.EXPRESSION(tokens));
+            }
         } else {
             return this.LOGICAL_OR_EXP(tokens);
         }
