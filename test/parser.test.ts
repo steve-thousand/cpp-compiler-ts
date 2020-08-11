@@ -159,6 +159,26 @@ describe('parser', function () {
             )).to.eql(tree);
         });
 
+        it('Return binary modulo', function () {
+            const tokens = lex("int main() {\n\treturn 2 % 3;\n}");
+            const tree = parse(tokens);
+            expect(new ast.AST(
+                new ast.Program(
+                    new ast.Func(
+                        "main", [
+                        new ast.Return(
+                            new ast.BinOp(
+                                ast.BinaryOperator.MODULO,
+                                new ast.Constant(2),
+                                new ast.Constant(3)
+                            )
+                        )
+                    ]
+                    )
+                )
+            )).to.eql(tree);
+        });
+
         it('Mixing binary math', function () {
             const tokens = lex("int main() {\n\treturn 2 + 3 * 4;\n}");
             const tree = parse(tokens);
@@ -261,6 +281,106 @@ describe('parser', function () {
                         new ast.Return(
                             new ast.BinOp(
                                 ast.BinaryOperator.OR,
+                                new ast.Constant(2),
+                                new ast.Constant(3)
+                            )
+                        )
+                    ]
+                    )
+                )
+            )).to.eql(tree);
+        });
+
+        it('Return Bitwise AND', function () {
+            const tokens = lex("int main() {\n\treturn 2 & 3;\n}");
+            const tree = parse(tokens);
+            expect(new ast.AST(
+                new ast.Program(
+                    new ast.Func(
+                        "main", [
+                        new ast.Return(
+                            new ast.BinOp(
+                                ast.BinaryOperator.BITWISE_AND,
+                                new ast.Constant(2),
+                                new ast.Constant(3)
+                            )
+                        )
+                    ]
+                    )
+                )
+            )).to.eql(tree);
+        });
+
+        it('Return Bitwise OR', function () {
+            const tokens = lex("int main() {\n\treturn 2 | 3;\n}");
+            const tree = parse(tokens);
+            expect(new ast.AST(
+                new ast.Program(
+                    new ast.Func(
+                        "main", [
+                        new ast.Return(
+                            new ast.BinOp(
+                                ast.BinaryOperator.BITWISE_OR,
+                                new ast.Constant(2),
+                                new ast.Constant(3)
+                            )
+                        )
+                    ]
+                    )
+                )
+            )).to.eql(tree);
+        });
+
+        it('Return Bitwise XOR', function () {
+            const tokens = lex("int main() {\n\treturn 2 ^ 3;\n}");
+            const tree = parse(tokens);
+            expect(new ast.AST(
+                new ast.Program(
+                    new ast.Func(
+                        "main", [
+                        new ast.Return(
+                            new ast.BinOp(
+                                ast.BinaryOperator.BITWISE_XOR,
+                                new ast.Constant(2),
+                                new ast.Constant(3)
+                            )
+                        )
+                    ]
+                    )
+                )
+            )).to.eql(tree);
+        });
+
+        it('Return Bitwise Shift Left', function () {
+            const tokens = lex("int main() {\n\treturn 2 << 3;\n}");
+            const tree = parse(tokens);
+            expect(new ast.AST(
+                new ast.Program(
+                    new ast.Func(
+                        "main", [
+                        new ast.Return(
+                            new ast.BinOp(
+                                ast.BinaryOperator.BITWISE_SHIFT_LEFT,
+                                new ast.Constant(2),
+                                new ast.Constant(3)
+                            )
+                        )
+                    ]
+                    )
+                )
+            )).to.eql(tree);
+        });
+
+        it('Return Bitwise Shift Right', function () {
+            const tokens = lex("int main() {\n\treturn 2 >> 3;\n}");
+            const tree = parse(tokens);
+            expect(new ast.AST(
+                new ast.Program(
+                    new ast.Func(
+                        "main", [
+                        new ast.Return(
+                            new ast.BinOp(
+                                ast.BinaryOperator.BITWISE_SHIFT_RIGHT,
                                 new ast.Constant(2),
                                 new ast.Constant(3)
                             )

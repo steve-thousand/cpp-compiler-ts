@@ -101,7 +101,28 @@ function generateExpression(expression: ast.Expression) {
                 break;
             case ast.BinaryOperator.DIVISION:
                 generatedParts.push(line("cdq"))
-                generatedParts.push(lineAndComment("/", "idivl", "%rcx"))
+                generatedParts.push(lineAndComment("/", "idivq", "%rcx"))
+                break;
+            case ast.BinaryOperator.MODULO:
+                //https://stackoverflow.com/a/8232170/3529744
+                generatedParts.push(line("cdq"))
+                generatedParts.push(lineAndComment("%", "idivq", "%rcx"))
+                generatedParts.push(line("movq", "%rdx", "%rax"));
+                break;
+            case ast.BinaryOperator.BITWISE_AND:
+                generatedParts.push(lineAndComment("&", "and", "%rcx", "%rax"))
+                break;
+            case ast.BinaryOperator.BITWISE_OR:
+                generatedParts.push(lineAndComment("|", "or", "%rcx", "%rax"))
+                break;
+            case ast.BinaryOperator.BITWISE_XOR:
+                generatedParts.push(lineAndComment("^", "xor", "%rcx", "%rax"))
+                break;
+            case ast.BinaryOperator.BITWISE_SHIFT_LEFT:
+                generatedParts.push(lineAndComment("<<", "shl", "%rcx", "%rax"))
+                break;
+            case ast.BinaryOperator.BITWISE_SHIFT_RIGHT:
+                generatedParts.push(lineAndComment(">>", "shr", "%rcx", "%rax"))
                 break;
             case ast.BinaryOperator.EQUAL:
                 generatedParts.push(line("cmpq", "%rcx", "%rax"))

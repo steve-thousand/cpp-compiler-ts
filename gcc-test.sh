@@ -14,6 +14,7 @@ for D in ./gcc-test/*; do
         rm -rf test-out/*
 
         # build and run
+        # TODO: check result of build/gcc?
         node dist/bundle.js $D/main.cpp test-out/out.s
         gcc test-out/out.s -o test-out/out
         ./test-out/out

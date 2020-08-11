@@ -89,6 +89,14 @@ describe('lexer', function () {
             expect(Token.ofTypeAndValue(TokenType.LITERAL_INTEGER, "3")).to.eql(tokens[2]);
         });
 
+        it('Binary Modulo', function () {
+            const tokens = lex("1 % 3");
+            expect(3).to.equal(tokens.length);
+            expect(Token.ofTypeAndValue(TokenType.LITERAL_INTEGER, "1")).to.eql(tokens[0]);
+            expect(Token.ofType(TokenType.BINARY_MODULO)).to.eql(tokens[1]);
+            expect(Token.ofTypeAndValue(TokenType.LITERAL_INTEGER, "3")).to.eql(tokens[2]);
+        });
+
         it('Binary And', function () {
             const tokens = lex("1 && 3");
             expect(3).to.equal(tokens.length);
@@ -102,6 +110,46 @@ describe('lexer', function () {
             expect(3).to.equal(tokens.length);
             expect(Token.ofTypeAndValue(TokenType.LITERAL_INTEGER, "1")).to.eql(tokens[0]);
             expect(Token.ofType(TokenType.BINARY_OR)).to.eql(tokens[1]);
+            expect(Token.ofTypeAndValue(TokenType.LITERAL_INTEGER, "3")).to.eql(tokens[2]);
+        });
+
+        it('Binary Bitwise AND', function () {
+            const tokens = lex("1 & 3");
+            expect(3).to.equal(tokens.length);
+            expect(Token.ofTypeAndValue(TokenType.LITERAL_INTEGER, "1")).to.eql(tokens[0]);
+            expect(Token.ofType(TokenType.BINARY_BITWISE_AND)).to.eql(tokens[1]);
+            expect(Token.ofTypeAndValue(TokenType.LITERAL_INTEGER, "3")).to.eql(tokens[2]);
+        });
+
+        it('Binary Bitwise OR', function () {
+            const tokens = lex("1 | 3");
+            expect(3).to.equal(tokens.length);
+            expect(Token.ofTypeAndValue(TokenType.LITERAL_INTEGER, "1")).to.eql(tokens[0]);
+            expect(Token.ofType(TokenType.BINARY_BITWISE_OR)).to.eql(tokens[1]);
+            expect(Token.ofTypeAndValue(TokenType.LITERAL_INTEGER, "3")).to.eql(tokens[2]);
+        });
+
+        it('Binary Bitwise XOR', function () {
+            const tokens = lex("1 ^ 3");
+            expect(3).to.equal(tokens.length);
+            expect(Token.ofTypeAndValue(TokenType.LITERAL_INTEGER, "1")).to.eql(tokens[0]);
+            expect(Token.ofType(TokenType.BINARY_BITWISE_XOR)).to.eql(tokens[1]);
+            expect(Token.ofTypeAndValue(TokenType.LITERAL_INTEGER, "3")).to.eql(tokens[2]);
+        });
+
+        it('Binary Bitwise Shift Left', function () {
+            const tokens = lex("1 << 3");
+            expect(3).to.equal(tokens.length);
+            expect(Token.ofTypeAndValue(TokenType.LITERAL_INTEGER, "1")).to.eql(tokens[0]);
+            expect(Token.ofType(TokenType.BINARY_BITWISE_SHIFT_LEFT)).to.eql(tokens[1]);
+            expect(Token.ofTypeAndValue(TokenType.LITERAL_INTEGER, "3")).to.eql(tokens[2]);
+        });
+
+        it('Binary Bitwise Shift Right', function () {
+            const tokens = lex("1 >> 3");
+            expect(3).to.equal(tokens.length);
+            expect(Token.ofTypeAndValue(TokenType.LITERAL_INTEGER, "1")).to.eql(tokens[0]);
+            expect(Token.ofType(TokenType.BINARY_BITWISE_SHIFT_RIGHT)).to.eql(tokens[1]);
             expect(Token.ofTypeAndValue(TokenType.LITERAL_INTEGER, "3")).to.eql(tokens[2]);
         });
 

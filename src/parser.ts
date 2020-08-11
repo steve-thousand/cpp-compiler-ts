@@ -24,6 +24,18 @@ function binary(tokenType: TokenType): ast.BinaryOperator {
             return ast.BinaryOperator.MULTIPLICATION;
         case TokenType.BINARY_DIVISION:
             return ast.BinaryOperator.DIVISION;
+        case TokenType.BINARY_MODULO:
+            return ast.BinaryOperator.MODULO;
+        case TokenType.BINARY_BITWISE_AND:
+            return ast.BinaryOperator.BITWISE_AND;
+        case TokenType.BINARY_BITWISE_OR:
+            return ast.BinaryOperator.BITWISE_OR;
+        case TokenType.BINARY_BITWISE_XOR:
+            return ast.BinaryOperator.BITWISE_XOR;
+        case TokenType.BINARY_BITWISE_SHIFT_LEFT:
+            return ast.BinaryOperator.BITWISE_SHIFT_LEFT;
+        case TokenType.BINARY_BITWISE_SHIFT_RIGHT:
+            return ast.BinaryOperator.BITWISE_SHIFT_RIGHT;
         case TokenType.BINARY_EQUAL:
             return ast.BinaryOperator.EQUAL;
         case TokenType.BINARY_NOT_EQUAL:
@@ -42,6 +54,26 @@ function binary(tokenType: TokenType): ast.BinaryOperator {
             return ast.BinaryOperator.AND;
         case TokenType.ASSIGNMENT:
             return ast.BinaryOperator.ASSIGNMENT;
+        case TokenType.COMPOUND_ASSIGNMENT_ADDITION:
+            return ast.BinaryOperator.COMPOUND_ASSIGNMENT_ADDITION;
+        case TokenType.COMPOUND_ASSIGNMENT_SUBTRACTION:
+            return ast.BinaryOperator.COMPOUND_ASSIGNMENT_SUBTRACTION;
+        case TokenType.COMPOUND_ASSIGNMENT_MULTIPLICATION:
+            return ast.BinaryOperator.COMPOUND_ASSIGNMENT_MULTIPLICATION;
+        case TokenType.COMPOUND_ASSIGNMENT_DIVISION:
+            return ast.BinaryOperator.COMPOUND_ASSIGNMENT_DIVISION;
+        case TokenType.COMPOUND_ASSIGNMENT_MODULO:
+            return ast.BinaryOperator.COMPOUND_ASSIGNMENT_MODULO;
+        case TokenType.COMPOUND_ASSIGNMENT_BITSHIFT_LEFT:
+            return ast.BinaryOperator.COMPOUND_ASSIGNMENT_BITSHIFT_LEFT;
+        case TokenType.COMPOUND_ASSIGNMENT_BITSHIFT_RIGHT:
+            return ast.BinaryOperator.COMPOUND_ASSIGNMENT_BITSHIFT_RIGHT;
+        case TokenType.COMPOUND_ASSIGNMENT_BITWISE_AND:
+            return ast.BinaryOperator.COMPOUND_ASSIGNMENT_BITWISE_AND;
+        case TokenType.COMPOUND_ASSIGNMENT_BITWISE_OR:
+            return ast.BinaryOperator.COMPOUND_ASSIGNMENT_BITWISE_OR;
+        case TokenType.COMPOUND_ASSIGNMENT_BITWISE_XOR:
+            return ast.BinaryOperator.COMPOUND_ASSIGNMENT_BITWISE_XOR;
     }
 }
 
@@ -49,17 +81,40 @@ function tokenIs(tokenType: TokenType, ...tokenTypes: TokenType[]) {
     return tokenTypes.indexOf(tokenType) > -1;
 }
 
+function isTokenAssignment(tokenType: TokenType) {
+    switch (tokenType) {
+        case TokenType.ASSIGNMENT:
+        case TokenType.COMPOUND_ASSIGNMENT_ADDITION:
+        case TokenType.COMPOUND_ASSIGNMENT_SUBTRACTION:
+        case TokenType.COMPOUND_ASSIGNMENT_MULTIPLICATION:
+        case TokenType.COMPOUND_ASSIGNMENT_DIVISION:
+        case TokenType.COMPOUND_ASSIGNMENT_MODULO:
+        case TokenType.COMPOUND_ASSIGNMENT_BITSHIFT_LEFT:
+        case TokenType.COMPOUND_ASSIGNMENT_BITSHIFT_RIGHT:
+        case TokenType.COMPOUND_ASSIGNMENT_BITWISE_AND:
+        case TokenType.COMPOUND_ASSIGNMENT_BITWISE_OR:
+        case TokenType.COMPOUND_ASSIGNMENT_BITWISE_XOR:
+            return true;
+        default:
+            return false;
+    }
+}
+
 /**
  * <PROGRAM> = <FUNCTION>
  * <FUNCTION> = "int" <IDENTIFIER>"(){" <STATEMENT[]> "}""
  * <STATEMENT> = return <EXPRESSION>; | <EXPRESSION>; | "int" IDENTIFIER {"=" <EXPRESSION>}
- * <EXPRESSION> = IDENTIFIER "=" <EXPRESSION> | <LOGICAL_OR_EXP>
+ * <EXPRESSION> = IDENTIFIER ASSIGNMENT_OPERATOR <EXPRESSION> | <LOGICAL_OR_EXP>
  * <LOGICAL_OR_EXP> = <LOGICAL_AND_EXP> { "||" <LOGICAL_AND_EXP }
- * <LOGICAL_AND_EXP> = <EQUALITY_EXP> { "&&" <EQUALITY_EXP> }
+ * <LOGICAL_AND_EXP> = <BITWISE_OR> { "&&" <BITWISE_OR> }
+ * <BITWISE_OR> = <BITWISE_XOR> { "|" <BITWISE_XOR> }
+ * <BITWISE_XOR> = <BITWISE_AND> { "^" <BITWISE_AND> }
+ * <BITWISE_AND> = <EQUALITY_EXP> { "&" <EQUALITY_EXP> }
  * <EQUALITY_EXP> = <RELATIONAL_EXP> { ("!=" | "==") <RELATIONAL_EXP> }
- * <RELATIONAL_EXP> = <ADDITIVE_EXP> { ("<" | ">" | "<=" | ">=") <ADDITIVE_EXP> }
+ * <RELATIONAL_EXP> = <BITWISE_SHIFT_EXP> { ("<" | ">" | "<=" | ">=") <BITWISE_SHIFT_EXP> }
+ * <BITWISE_SHIFT_EXP> = <ADDITIVE_EXP> { ("<<" | ">>") <ADDITIVE_EXP> }
  * <ADDITIVE_EXP> = <TERM> { ("+" | "-") <TERM> }
- * <TERM> = <FACTOR> { ("*" | "/") <FACTOR> }
+ * <TERM> = <FACTOR> { ("*" | "/" | "%") <FACTOR> }
  * <FACTOR> = "(" <EXPRESSION> ")" | <UNARY_OPERATOR> <FACTOR> | <LITERAL> | IDENTIFIER
  */
 const GRAMMAR = {
@@ -114,9 +169,10 @@ const GRAMMAR = {
         }
     },
     EXPRESSION: function (tokens: Token[]) {
-        if (tokens[0].type === TokenType.IDENTIFIER && tokens[1].type === TokenType.ASSIGNMENT) {
+        if (tokens[0].type === TokenType.IDENTIFIER && isTokenAssignment(tokens[1].type)) {
             const identifier = tokens.shift();
             tokens.shift(); //"="
+            //TODO: how do we handle compound assignment? assignment of var reference + expression?
             return new ast.Assignment(identifier.value, this.EXPRESSION(tokens));
         } else {
             return this.LOGICAL_OR_EXP(tokens);
@@ -132,10 +188,37 @@ const GRAMMAR = {
         }
     },
     LOGICAL_AND_EXP: function (tokens: Token[]) {
-        const equality = this.EQUALITY_EXP(tokens);
+        const equality = this.BITWISE_OR_EXP(tokens);
         if (tokenIs(tokens[0].type, TokenType.BINARY_AND)) {
             tokens.shift();
-            return new ast.BinOp(ast.BinaryOperator.AND, equality, this.RELATIONAL_EXP(tokens));
+            return new ast.BinOp(ast.BinaryOperator.AND, equality, this.BITWISE_OR_EXP(tokens));
+        } else {
+            return equality;
+        }
+    },
+    BITWISE_OR_EXP: function (tokens: Token[]) {
+        const equality = this.BITWISE_XOR_EXP(tokens);
+        if (tokenIs(tokens[0].type, TokenType.BINARY_BITWISE_OR)) {
+            tokens.shift();
+            return new ast.BinOp(ast.BinaryOperator.BITWISE_OR, equality, this.BITWISE_XOR_EXP(tokens));
+        } else {
+            return equality;
+        }
+    },
+    BITWISE_XOR_EXP: function (tokens: Token[]) {
+        const equality = this.BITWISE_AND_EXP(tokens);
+        if (tokenIs(tokens[0].type, TokenType.BINARY_BITWISE_XOR)) {
+            tokens.shift();
+            return new ast.BinOp(ast.BinaryOperator.BITWISE_XOR, equality, this.BITWISE_AND_EXP(tokens));
+        } else {
+            return equality;
+        }
+    },
+    BITWISE_AND_EXP: function (tokens: Token[]) {
+        const equality = this.EQUALITY_EXP(tokens);
+        if (tokenIs(tokens[0].type, TokenType.BINARY_BITWISE_AND)) {
+            tokens.shift();
+            return new ast.BinOp(ast.BinaryOperator.BITWISE_AND, equality, this.EQUALITY_EXP(tokens));
         } else {
             return equality;
         }
@@ -149,9 +232,17 @@ const GRAMMAR = {
         }
     },
     RELATIONAL_EXP: function (tokens: Token[]) {
-        const additive = this.ADDITIVE_EXP(tokens);
+        const additive = this.BITWISE_SHIFT_EXP(tokens);
         if (tokenIs(tokens[0].type, TokenType.BINARY_LESS_THAN, TokenType.BINARY_LESS_THAN_OR_EQUAL, TokenType.BINARY_GREATER_THAN, TokenType.BINARY_GREATER_THAN_OR_EQUAL)) {
-            return new ast.BinOp(binary(tokens.shift().type), additive, this.RELATIONAL_EXP(tokens));
+            return new ast.BinOp(binary(tokens.shift().type), additive, this.BITWISE_SHIFT_EXP(tokens));
+        } else {
+            return additive;
+        }
+    },
+    BITWISE_SHIFT_EXP: function (tokens: Token[]) {
+        const additive = this.ADDITIVE_EXP(tokens);
+        if (tokenIs(tokens[0].type, TokenType.BINARY_BITWISE_SHIFT_LEFT, TokenType.BINARY_BITWISE_SHIFT_RIGHT)) {
+            return new ast.BinOp(binary(tokens.shift().type), additive, this.ADDITIVE_EXP(tokens));
         } else {
             return additive;
         }
@@ -166,7 +257,7 @@ const GRAMMAR = {
     },
     TERM: function (tokens: Token[]) {
         const factor = this.FACTOR(tokens);
-        if (tokenIs(tokens[0].type, TokenType.BINARY_MULTIPLICATION, TokenType.BINARY_DIVISION)) {
+        if (tokenIs(tokens[0].type, TokenType.BINARY_MULTIPLICATION, TokenType.BINARY_DIVISION, TokenType.BINARY_MODULO)) {
             return new ast.BinOp(binary(tokens.shift().type), factor, this.RELATIONAL_EXP(tokens));
         } else {
             return factor;
