@@ -1,7 +1,5 @@
 import { Token, TokenType } from './token';
 
-export { Token, TokenType }
-
 const WHITE_SPACE_REGEX = /^\s+$/;
 const ID_OR_KEYWORD_REGEX = /^[A-Za-z_][A-Za-z0-9_]*$/;
 const NUMBER_REGEX = /^[0-9]+$/;

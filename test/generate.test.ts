@@ -1,5 +1,6 @@
-import { assert, expect } from 'chai';
-import { lex, Token } from '../src/lexer';
+import { expect } from 'chai';
+import { Token } from '../src/token';
+import { lex } from '../src/lexer';
 import { parse, ast } from '../src/parser';
 import { generate } from '../src/generate';
 
@@ -13,12 +14,8 @@ describe('generator', function () {
             expect(generated).to.equal(
                 " .globl _main\n" +
                 "_main:\n" +
-                "    push    %ebp\n" +
-                "    movl    %esp, %ebp\n" +
-                "    movl    $2, %eax\n" +
-                "    movl    %ebp, %esp\n" +
-                "    pop     %ebp\n" +
-                "    ret     "
+                "    movq    $2, %rax\n" +
+                "    ret                                    // main - return"
             );
         });
         it('Negation', function () {
@@ -28,13 +25,9 @@ describe('generator', function () {
             expect(generated).to.equal(
                 " .globl _main\n" +
                 "_main:\n" +
-                "    push    %ebp\n" +
-                "    movl    %esp, %ebp\n" +
-                "    movl    $5, %eax\n" +
-                "    neg     %eax\n" +
-                "    movl    %ebp, %esp\n" +
-                "    pop     %ebp\n" +
-                "    ret     "
+                "    movq    $5, %rax\n" +
+                "    neg     %rax\n" +
+                "    ret                                    // main - return"
             );
         });
         it('Bitwise complement', function () {
@@ -44,13 +37,9 @@ describe('generator', function () {
             expect(generated).to.equal(
                 " .globl _main\n" +
                 "_main:\n" +
-                "    push    %ebp\n" +
-                "    movl    %esp, %ebp\n" +
-                "    movl    $5, %eax\n" +
-                "    xor     %eax, 0xFFFF\n" +
-                "    movl    %ebp, %esp\n" +
-                "    pop     %ebp\n" +
-                "    ret     "
+                "    movq    $5, %rax\n" +
+                "    xor     %rax, 0xFFFF\n" +
+                "    ret                                    // main - return"
             );
         });
         it('Logical negation', function () {
@@ -60,15 +49,11 @@ describe('generator', function () {
             expect(generated).to.equal(
                 " .globl _main\n" +
                 "_main:\n" +
-                "    push    %ebp\n" +
-                "    movl    %esp, %ebp\n" +
-                "    movl    $5, %eax\n" +
-                "    cmpl    $0, %eax\n" +
-                "    movl    $0, %eax\n" +
+                "    movq    $5, %rax\n" +
+                "    cmpq    $0, %rax\n" +
+                "    movq    $0, %rax\n" +
                 "    sete    %al\n" +
-                "    movl    %ebp, %esp\n" +
-                "    pop     %ebp\n" +
-                "    ret     "
+                "    ret                                    // main - return"
             );
         });
         it('Declaration and reference', function () {
@@ -78,26 +63,24 @@ describe('generator', function () {
             expect(generated).to.equal(
                 " .globl _main\n" +
                 "_main:\n" +
-                "    push    %ebp\n" +
-                "    movl    %esp, %ebp\n" +
-                "    movl    $0, %eax\n" +
-                "    push    %rax ; a\n" + //a
-                "    movl    %esp - 4, %eax\n" + //a = 0
-                "    push    %rax\n" +
-                "    movl    $1, %eax\n" +
-                "    movl    %eax, %ecx\n" +
-                "    pop     %rax\n" +
-                "    addl    %ecx, %eax\n" + //a + 1
-                "    movl    %eax, %esp - 4\n" + //a = a + 1
-                "    movl    $2, %eax\n" +
-                "    push    %rax\n" +
-                "    movl    %esp - 4, %eax\n" + //a
-                "    movl    %eax, %ecx\n" +
-                "    pop     %rax\n" + //2
-                "    imul    %ecx, %eax\n" + //2 * a
-                "    movl    %ebp, %esp\n" +
-                "    pop     %ebp\n" +
-                "    ret     "
+                "    subq    $8, %rsp                       // allocate `a`, 8 bytes\n" +
+                "    movq    $0, %rax\n" +
+                "    movq    %rax, 8(%rbp)                  // `a` assignment\n" +
+                "    movq    8(%rbp), %rax                  // `a` reference\n" +
+                "    pushq   %rax\n" +
+                "    movq    $1, %rax\n" +
+                "    movq    %rax, %rcx\n" +
+                "    popq    %rax\n" +
+                "    addq    %rcx, %rax                     // +\n" +
+                "    movq    %rax, 8(%rbp)                  // `a` assignment\n" +
+                "    movq    $2, %rax\n" +
+                "    pushq   %rax\n" +
+                "    movq    8(%rbp), %rax                  // `a` reference\n" +
+                "    movq    %rax, %rcx\n" +
+                "    popq    %rax\n" +
+                "    imulq   %rcx, %rax                     // *\n" +
+                "    addq    $8, %rsp                       // deallocate 8 bytes\n" +
+                "    ret                                    // main - return"
             );
         });
     });

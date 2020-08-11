@@ -1,5 +1,6 @@
 import { expect } from 'chai';
-import { lex, Token, TokenType } from '../src/lexer';
+import { lex } from '../src/lexer';
+import { Token, TokenType } from '../src/token';
 
 describe('lexer', function () {
     describe('lexer()', function () {

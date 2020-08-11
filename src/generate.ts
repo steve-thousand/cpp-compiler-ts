@@ -1,6 +1,4 @@
 import { ast } from './parser';
-import { count, table } from 'console';
-import { off } from 'process';
 
 const FOUR_SPACES = "    ";
 
@@ -60,7 +58,9 @@ function generateStatement(statement: ast.Statement, functionIdentifier: string)
             generatedParts.push(generateExpression(statement.expression));
         }
         const size = contextStack[contextStack.length - 1].getSize();
-        generatedParts.push(lineAndComment(`deallocate ${size} bytes`, "addq", "$" + size, "%rsp"))
+        if (size) {
+            generatedParts.push(lineAndComment(`deallocate ${size} bytes`, "addq", "$" + size, "%rsp"))
+        }
         // generatedParts.push(line("movq", "%rbp", "%rsp"))
         // generatedParts.push(line("popq", "%rbp"));
         generatedParts.push(lineAndComment(functionIdentifier + " - return", "ret"))
