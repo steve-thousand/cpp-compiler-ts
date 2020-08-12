@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { lex } from '../src/lexer';
 import { parse, ast } from '../src/parser';
-import { BinOp } from '../src/ast';
+import { BinOp, CondExp } from '../src/ast';
 
 
 describe('parser', function () {
@@ -561,6 +561,59 @@ describe('parser', function () {
                             new ast.Constant(3)
                         ))),
                         new ast.Return(new ast.VarReference("a"))
+                    ]
+                    )
+                )
+            )).to.eql(tree);
+        });
+
+        it('If', function () {
+            const tokens = lex("int main() {\n\tif(1){ a = 2; } return a;\n}");
+            const tree = parse(tokens);
+            expect(new ast.AST(
+                new ast.Program(
+                    new ast.Func(
+                        "main", [
+                        new ast.Conditional(
+                            new ast.Constant(1),
+                            new ast.ExpStatement(new ast.Assignment("a", new ast.Constant(2)))
+                        ),
+                        new ast.Return(new ast.VarReference("a"))
+                    ]
+                    )
+                )
+            )).to.eql(tree);
+        });
+
+        it('Else', function () {
+            const tokens = lex("int main() {\n\tif(1){ a = 2; } else { a = 3; } return a;\n}");
+            const tree = parse(tokens);
+            expect(new ast.AST(
+                new ast.Program(
+                    new ast.Func(
+                        "main", [
+                        new ast.Conditional(
+                            new ast.Constant(1),
+                            new ast.ExpStatement(new ast.Assignment("a", new ast.Constant(2))),
+                            new ast.ExpStatement(new ast.Assignment("a", new ast.Constant(3)))
+                        ),
+                        new ast.Return(new ast.VarReference("a"))
+                    ]
+                    )
+                )
+            )).to.eql(tree);
+        });
+
+        it('Ternary', function () {
+            const tokens = lex("int main() {\n\treturn 1 ? 2 : 3;\n}");
+            const tree = parse(tokens);
+            expect(new ast.AST(
+                new ast.Program(
+                    new ast.Func(
+                        "main", [
+                        new ast.Return(
+                            new CondExp(new ast.Constant(1), new ast.Constant(2), new ast.Constant(3))
+                        )
                     ]
                     )
                 )

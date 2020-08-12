@@ -1,4 +1,5 @@
 import { ast } from './parser';
+import { CondExp } from './ast';
 
 const FOUR_SPACES = "    ";
 
@@ -76,6 +77,18 @@ function generateStatement(statement: ast.Statement, functionIdentifier: string)
         // generatedParts.push(lineAndComment("`" + identifier + "` declaration" + (statement.expression ? " and assignment" : ""), "push", "%rax"));
     } else if (statement instanceof ast.ExpStatement) {
         generatedParts.push(generateExpression(statement.expression));
+    } else if (statement instanceof ast.Conditional) {
+        const id = uniq.get();
+        generatedParts.push(generateExpression(statement.condition));
+        generatedParts.push(lineAndComment("if", "cmpq", "$0", "%rax"))
+        generatedParts.push(lineAndComment("false", "je", (statement.elseStatement ? "_else_" : "_post_conditional_") + id))
+        generatedParts.push(generateStatement(statement.ifStatement, functionIdentifier));
+        if (statement.elseStatement) {
+            generatedParts.push(lineAndComment("if done", "jmp", "_post_conditional_" + id))
+            generatedParts.push(label("_else_" + id))
+            generatedParts.push(generateStatement(statement.elseStatement, functionIdentifier));
+        }
+        generatedParts.push(label("_post_conditional_" + id))
     }
     return generatedParts.join("\n");
 }
@@ -203,6 +216,16 @@ function generateExpression(expression: ast.Expression) {
     } else if (expression instanceof ast.VarReference) {
         const identifier = expression.identifier;
         generatedParts.push(lineAndComment("`" + identifier + "` reference", "movq", contextStack[contextStack.length - 1].getIdentifier(identifier) + "(%rbp)", "%rax"));
+    } else if (expression instanceof CondExp) {
+        const id = uniq.get();
+        generatedParts.push(generateExpression(expression.condition));
+        generatedParts.push(lineAndComment("if", "cmpq", "$0", "%rax"))
+        generatedParts.push(lineAndComment("false", "je", "_else_" + id))
+        generatedParts.push(generateExpression(expression.ifExp));
+        generatedParts.push(lineAndComment("if done", "jmp", "_post_conditional_" + id))
+        generatedParts.push(label("_else_" + id))
+        generatedParts.push(generateExpression(expression.elseExp));
+        generatedParts.push(label("_post_conditional_" + id))
     }
     return generatedParts.join("\n");
 }

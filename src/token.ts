@@ -53,12 +53,17 @@ export enum TokenType {
     COMPOUND_ASSIGNMENT_BITWISE_OR,
     COMPOUND_ASSIGNMENT_BITWISE_XOR,
 
+    COLON,
+    QUESTION_MARK,
+
     /*
     KEYWORDS
     */
 
     INT,
     RETURN,
+    IF,
+    ELSE,
 
     /*
     VARIABLE
@@ -114,8 +119,13 @@ const CONSTANT_TOKENS = {
     "|=": TokenType.COMPOUND_ASSIGNMENT_BITWISE_OR,
     "^=": TokenType.COMPOUND_ASSIGNMENT_BITWISE_XOR,
 
+    ":": TokenType.COLON,
+    "?": TokenType.QUESTION_MARK,
+
     "int": TokenType.INT,
-    "return": TokenType.RETURN
+    "return": TokenType.RETURN,
+    "if": TokenType.IF,
+    "else": TokenType.ELSE
 }
 
 export class Token {

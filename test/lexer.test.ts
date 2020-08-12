@@ -212,5 +212,44 @@ describe('lexer', function () {
                 Token.ofTypeAndValue(TokenType.LITERAL_INTEGER, "1")
             ]).to.eql(tokens)
         });
+        it('If', function () {
+            const tokens = lex("if(0 == 1)");
+            expect([
+                Token.ofType(TokenType.IF),
+                Token.ofType(TokenType.PARENTHESES_OPEN),
+                Token.ofTypeAndValue(TokenType.LITERAL_INTEGER, "0"),
+                Token.ofType(TokenType.BINARY_EQUAL),
+                Token.ofTypeAndValue(TokenType.LITERAL_INTEGER, "1"),
+                Token.ofType(TokenType.PARENTHESES_CLOSE)
+            ]).to.eql(tokens)
+        });
+        it('If else', function () {
+            const tokens = lex("if(0 == 1){}else{}");
+            expect([
+                Token.ofType(TokenType.IF),
+                Token.ofType(TokenType.PARENTHESES_OPEN),
+                Token.ofTypeAndValue(TokenType.LITERAL_INTEGER, "0"),
+                Token.ofType(TokenType.BINARY_EQUAL),
+                Token.ofTypeAndValue(TokenType.LITERAL_INTEGER, "1"),
+                Token.ofType(TokenType.PARENTHESES_CLOSE),
+                Token.ofType(TokenType.BRACE_OPEN),
+                Token.ofType(TokenType.BRACE_CLOSE),
+                Token.ofType(TokenType.ELSE),
+                Token.ofType(TokenType.BRACE_OPEN),
+                Token.ofType(TokenType.BRACE_CLOSE)
+            ]).to.eql(tokens)
+        });
+        it('Ternary', function () {
+            const tokens = lex("0 == 1 ? a : b");
+            expect([
+                Token.ofTypeAndValue(TokenType.LITERAL_INTEGER, "0"),
+                Token.ofType(TokenType.BINARY_EQUAL),
+                Token.ofTypeAndValue(TokenType.LITERAL_INTEGER, "1"),
+                Token.ofType(TokenType.QUESTION_MARK),
+                Token.ofTypeAndValue(TokenType.IDENTIFIER, "a"),
+                Token.ofType(TokenType.COLON),
+                Token.ofTypeAndValue(TokenType.IDENTIFIER, "b")
+            ]).to.eql(tokens)
+        });
     });
 });

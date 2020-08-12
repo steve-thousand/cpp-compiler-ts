@@ -129,9 +129,12 @@ function isCompoundAssignment(tokenType: TokenType) {
 
 /**
  * <PROGRAM> = <FUNCTION>
- * <FUNCTION> = "int" <IDENTIFIER>"(){" <STATEMENT[]> "}""
- * <STATEMENT> = return <EXPRESSION>; | <EXPRESSION>; | "int" IDENTIFIER {"=" <EXPRESSION>}
- * <EXPRESSION> = IDENTIFIER ASSIGNMENT_OPERATOR <EXPRESSION> | <LOGICAL_OR_EXP>
+ * <FUNCTION> = "int" <IDENTIFIER>"(){" <BLOCK_ITEM[]> "}""
+ * <BLOCK_ITEM> = <STATEMENT> | <DECLARATION>
+ * <DECLARATION> = "int" IDENTIFIER {"=" <EXPRESSION>} ";"
+ * <STATEMENT> = return <EXPRESSION> ";" | <EXPRESSION> ";" | "if(" <EXPRESSION> ")" STATEMENT { "else" <STATEMENT> }
+ * <EXPRESSION> = IDENTIFIER ASSIGNMENT_OPERATOR <EXPRESSION> | <CONDITIONAL_EXP>
+ * <CONDITIONAL_EXP> = <LOGICAL_OR_EXP> { "?" <EXPRESSION> ":" <CONDITIONAL_EXP> }
  * <LOGICAL_OR_EXP> = <LOGICAL_AND_EXP> { "||" <LOGICAL_AND_EXP }
  * <LOGICAL_AND_EXP> = <BITWISE_OR> { "&&" <BITWISE_OR> }
  * <BITWISE_OR> = <BITWISE_XOR> { "|" <BITWISE_XOR> }
@@ -159,11 +162,34 @@ const GRAMMAR = {
             const statements: ast.Statement[] = [];
             // @ts-ignore
             while (tokens[0].type !== TokenType.BRACE_CLOSE) {
-                statements.push(this.STATEMENT(tokens));
+                statements.push(this.BLOCK_ITEM(tokens));
             }
             tokens.shift(); //"}"
             const func = new ast.Func(identifier, statements);
             return func;
+        }
+    },
+    BLOCK_ITEM: function (tokens: Token[]) {
+        const statement = this.STATEMENT(tokens);
+        if (!statement) {
+            return this.DECLARATION(tokens);
+        } else {
+            return statement;
+        }
+    },
+    DECLARATION: function (tokens: Token[]) {
+        if (tokens[0].type === TokenType.INT) {
+            tokens.shift();
+            const identifier = tokens.shift();
+            let expression = undefined;
+            // @ts-ignore
+            if (tokens[0].type === TokenType.ASSIGNMENT) {
+                tokens.shift(); //"="
+                expression = this.EXPRESSION(tokens);
+            }
+            const declaration = new ast.Declaration(identifier.value, expression);
+            tokens.shift(); //";"
+            return declaration;
         }
     },
     STATEMENT: function (tokens: Token[]) {
@@ -174,25 +200,29 @@ const GRAMMAR = {
             tokens.shift(); //";"
             return new ast.Return(expression);
         }
-
         expression = this.EXPRESSION(tokens);
         if (expression) {
             tokens.shift(); //";"
             return new ast.ExpStatement(expression);
-        }
-
-        if (tokens[0].type === TokenType.INT) {
-            tokens.shift();
-            const identifier = tokens.shift();
-            expression = undefined;
+        } else if (tokens[0].type === TokenType.IF) {
+            tokens.shift(); //"if"
+            tokens.shift(); //"("
+            const condition = this.EXPRESSION(tokens);
+            tokens.shift(); //")"
             // @ts-ignore
-            if (tokens[0].type === TokenType.ASSIGNMENT) {
-                tokens.shift(); //"="
-                expression = this.EXPRESSION(tokens);
+            const braces = tokens[0].type === TokenType.BRACE_OPEN;
+            if (braces) tokens.shift(); //optional "{"
+            const ifStatement = this.STATEMENT(tokens);
+            if (braces) tokens.shift(); //optional "}"
+            let elseStatement;
+            // @ts-ignore
+            if (tokens[0].type === TokenType.ELSE) {
+                tokens.shift(); //"else"
+                if (braces) tokens.shift(); //optional "{"
+                elseStatement = this.STATEMENT(tokens);
+                if (braces) tokens.shift(); //optional "}"
             }
-            const declaration = new ast.Declaration(identifier.value, expression);
-            tokens.shift(); //";"
-            return declaration;
+            return new ast.Conditional(condition, ifStatement, elseStatement);
         }
     },
     EXPRESSION: function (tokens: Token[]) {
@@ -206,7 +236,19 @@ const GRAMMAR = {
                 return new ast.Assignment(identifier.value, this.EXPRESSION(tokens));
             }
         } else {
-            return this.LOGICAL_OR_EXP(tokens);
+            return this.CONDITIONAL_EXP(tokens);
+        }
+    },
+    CONDITIONAL_EXP: function (tokens: Token[]) {
+        const logical = this.LOGICAL_OR_EXP(tokens);
+        if (logical && tokenIs(tokens[0].type, TokenType.QUESTION_MARK)) {
+            tokens.shift(); //"?"
+            const expression = this.EXPRESSION(tokens);
+            tokens.shift(); //":"
+            const conditional = this.CONDITIONAL_EXP(tokens);
+            return new ast.CondExp(logical, expression, conditional);
+        } else {
+            return logical;
         }
     },
     LOGICAL_OR_EXP: function (tokens: Token[]) {

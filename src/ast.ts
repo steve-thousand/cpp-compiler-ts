@@ -76,17 +76,22 @@ export class Assignment extends Expression {
         this.expression = expression;
     }
 }
-export class CompoundAssignment extends Assignment {
-    readonly operator: BinaryOperator;
-    constructor(identifier: string, expression: Expression, operator: BinaryOperator) {
-        super(identifier, expression);
-    }
-}
 export class VarReference extends Expression {
     readonly identifier: string;
     constructor(identifier: string) {
         super();
         this.identifier = identifier;
+    }
+}
+export class CondExp extends Expression {
+    readonly condition: Expression;
+    readonly ifExp: Expression;
+    readonly elseExp: Expression;
+    constructor(condition: Expression, ifExp: Expression, elseExp: Expression) {
+        super();
+        this.condition = condition;
+        this.ifExp = ifExp;
+        this.elseExp = elseExp;
     }
 }
 
@@ -112,6 +117,17 @@ export class ExpStatement extends Statement {
     constructor(expression: Expression) {
         super();
         this.expression = expression;
+    }
+}
+export class Conditional extends Statement {
+    readonly condition: Expression;
+    readonly ifStatement: Statement;
+    readonly elseStatement?: Statement;
+    constructor(condition: Expression, ifStatement: Statement, elseStatement?: Statement) {
+        super();
+        this.condition = condition;
+        this.ifStatement = ifStatement;
+        this.elseStatement = elseStatement;
     }
 }
 
