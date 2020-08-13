@@ -1,9 +1,12 @@
 import { ast } from './parser';
-import { CondExp } from './ast';
-
-const FOUR_SPACES = "    ";
+import { Instruction, Opcode, Register, Label, Global, OpBuilder } from './assembly';
 
 const contextStack = [];
+
+const RAX = Register.RAX;
+const RCX = Register.RCX;
+const RDX = Register.RDX;
+const AL = Register.AL;
 
 class Context {
     private offset: number = 0;
@@ -32,222 +35,216 @@ class UniqueIdGenerator {
 const uniq = new UniqueIdGenerator();
 
 //TODO maybe not a string? stream it?
-export function generate(ast: ast.AST): string {
+export function generate(ast: ast.AST): Instruction[] {
     const programNode: ast.Program = ast.program;
     const mainFunction = programNode.functionDeclaration;
     return generateFunctionParts(<ast.Func>mainFunction);
 }
 
-function generateFunctionParts(functionDeclaration: ast.Func): string {
-    const generatedParts = [];
-    generatedParts.push(" .globl _" + functionDeclaration.identifier);
-    generatedParts.push(label("_" + functionDeclaration.identifier))
-    // generatedParts.push(line("pushq", "%rbp"));
-    // generatedParts.push(line("movq", "%rsp", "%rbp"));
+function generateFunctionParts(functionDeclaration: ast.Func): Instruction[] {
+    let instructions: Instruction[] = [];
+    instructions.push(new Global("_" + functionDeclaration.identifier));
+    instructions.push(new Label("_" + functionDeclaration.identifier));
     contextStack.push(new Context());
     for (let statement of functionDeclaration.statements) {
-        generatedParts.push(generateStatement(statement, functionDeclaration.identifier));
+        instructions = instructions.concat(generateStatement(statement, functionDeclaration.identifier));
     }
     contextStack.shift();
-    return generatedParts.join("\n");
+    return instructions
 }
 
-function generateStatement(statement: ast.Statement, functionIdentifier: string): string {
-    const generatedParts = [];
+function generateStatement(statement: ast.Statement, functionIdentifier: string): Instruction[] {
+    let instructions: Instruction[] = [];
     if (statement instanceof ast.Return) {
         if (statement.expression) {
-            generatedParts.push(generateExpression(statement.expression));
+            instructions = instructions.concat(generateExpression(statement.expression));
         }
         const size = contextStack[contextStack.length - 1].getSize();
         if (size) {
-            generatedParts.push(lineAndComment(`deallocate ${size} bytes`, "addq", "$" + size, "%rsp"))
+            instructions.push(new OpBuilder(Opcode.ADD).withOperands(size, Register.RSP).withComment(`deallocate ${size} bytes`).build());
         }
-        // generatedParts.push(line("movq", "%rbp", "%rsp"))
-        // generatedParts.push(line("popq", "%rbp"));
-        generatedParts.push(lineAndComment(functionIdentifier + " - return", "ret"))
+        instructions.push(new OpBuilder(Opcode.RET).withComment(functionIdentifier + " - return").build());
     } else if (statement instanceof ast.Declaration) {
-        //push to stack
         const identifier = statement.identifier;
         contextStack[contextStack.length - 1].addIdentifier(identifier, 8);
-        generatedParts.push(lineAndComment(`allocate \`${identifier}\`, ${8} bytes`, "subq", "$8", "%rsp"))
+        instructions.push(new OpBuilder(Opcode.SUB).withOperands(8, Register.RSP).withComment(`allocate \`${identifier}\`, ${8} bytes`).build());
         if (statement.expression) {
-            generatedParts.push(generateExpression(statement.expression))
-            generatedParts.push(lineAndComment(`\`${identifier}\` assignment`, "movq", "%rax", contextStack[contextStack.length - 1].getIdentifier(identifier) + "(%rbp)"));
+            instructions = instructions.concat(generateExpression(statement.expression))
+            const size = contextStack[contextStack.length - 1].getIdentifier(identifier);
+            instructions.push(new OpBuilder(Opcode.MOV).withOperands(RAX, Register.offset(Register.RBP, size)).withComment(`\`${identifier}\` assignment`).build());
         }
-        // generatedParts.push(lineAndComment("`" + identifier + "` declaration" + (statement.expression ? " and assignment" : ""), "push", "%rax"));
     } else if (statement instanceof ast.ExpStatement) {
-        generatedParts.push(generateExpression(statement.expression));
+        instructions = instructions.concat(generateExpression(statement.expression));
     } else if (statement instanceof ast.Conditional) {
+
         const id = uniq.get();
-        generatedParts.push(generateExpression(statement.condition));
-        generatedParts.push(lineAndComment("if", "cmpq", "$0", "%rax"))
-        generatedParts.push(lineAndComment("false", "je", (statement.elseStatement ? "_else_" : "_post_conditional_") + id))
-        generatedParts.push(generateStatement(statement.ifStatement, functionIdentifier));
+        const postConditionalLabel = "_post_conditional_" + id;
+        const elseLabel = "_else_" + id;
+
+        instructions = instructions.concat(generateExpression(statement.condition));
+        instructions.push(new OpBuilder(Opcode.CMP).withOperands(0, RAX).withComment("if").build());
+        instructions.push(new OpBuilder(Opcode.JE).withOperands(statement.elseStatement ? elseLabel : postConditionalLabel).withComment("false").build());
+        instructions = instructions.concat(generateStatement(statement.ifStatement, functionIdentifier));
+
         if (statement.elseStatement) {
-            generatedParts.push(lineAndComment("if done", "jmp", "_post_conditional_" + id))
-            generatedParts.push(label("_else_" + id))
-            generatedParts.push(generateStatement(statement.elseStatement, functionIdentifier));
+            instructions.push(new OpBuilder(Opcode.JMP).withOperands(postConditionalLabel).withComment("if done").build());
+            instructions.push(new Label(elseLabel));
+            instructions = instructions.concat(generateStatement(statement.elseStatement, functionIdentifier));
         }
-        generatedParts.push(label("_post_conditional_" + id))
+
+        instructions.push(new Label(postConditionalLabel));
     }
-    return generatedParts.join("\n");
+    return instructions;
 }
 
-function generateExpression(expression: ast.Expression) {
-    const generatedParts = [];
+function generateExpression(expression: ast.Expression): Instruction[] {
+    let instructions: Instruction[] = [];
     if (expression instanceof ast.BinOp) {
         const id = uniq.get();
-        generatedParts.push(generateExpression(expression.left))
-        generatedParts.push(line("pushq", "%rax"))
-        generatedParts.push(generateExpression(expression.right))
-        generatedParts.push(line("movq", "%rax", "%rcx")) //righthand in rcx
-        generatedParts.push(line("popq", "%rax")) //left hand in rax
+
+        //instructions to calculate left and right hand sides
+        instructions = instructions.concat(generateExpression(expression.left))
+        instructions.push(new OpBuilder(Opcode.PUSH).withOperands(RAX).build());
+        instructions = instructions.concat(generateExpression(expression.right))
+        instructions.push(new OpBuilder(Opcode.MOV).withOperands(RAX, RCX).build()); //righthand in rcx
+        instructions.push(new OpBuilder(Opcode.POP).withOperands(RAX).build()); //left hand in rax
+
         switch (expression.operator) {
             case ast.BinaryOperator.ADDITION:
-                generatedParts.push(lineAndComment("+", "addq", "%rcx", "%rax"))
+                instructions.push(new OpBuilder(Opcode.ADD).withOperands(RCX, RAX).withComment("+").build());
                 break;
             case ast.BinaryOperator.SUBTRACTION:
-                generatedParts.push(lineAndComment("-", "subq", "%rcx", "%rax"))
+                instructions.push(new OpBuilder(Opcode.SUB).withOperands(RCX, RAX).withComment("-").build());
                 break;
             case ast.BinaryOperator.MULTIPLICATION:
-                generatedParts.push(lineAndComment("*", "imulq", "%rcx", "%rax"))
+                instructions.push(new OpBuilder(Opcode.IMUL).withOperands(RCX, RAX).withComment("*").build());
                 break;
             case ast.BinaryOperator.DIVISION:
-                generatedParts.push(line("cdq"))
-                generatedParts.push(lineAndComment("/", "idivq", "%rcx"))
+                instructions.push(new OpBuilder(Opcode.CDQ).build());
+                instructions.push(new OpBuilder(Opcode.IDIV).withOperands(RCX).withComment("/").build());
                 break;
             case ast.BinaryOperator.MODULO:
                 //https://stackoverflow.com/a/8232170/3529744
-                generatedParts.push(line("cdq"))
-                generatedParts.push(lineAndComment("%", "idivq", "%rcx"))
-                generatedParts.push(line("movq", "%rdx", "%rax"));
+                instructions.push(new OpBuilder(Opcode.CDQ).build());
+                instructions.push(new OpBuilder(Opcode.IDIV).withOperands(RCX).withComment("%").build());
+                instructions.push(new OpBuilder(Opcode.MOV).withOperands(RDX, RAX).build());
                 break;
             case ast.BinaryOperator.BITWISE_AND:
-                generatedParts.push(lineAndComment("&", "and", "%rcx", "%rax"))
+                instructions.push(new OpBuilder(Opcode.AND).withOperands(RCX, RAX).withComment("&").build());
                 break;
             case ast.BinaryOperator.BITWISE_OR:
-                generatedParts.push(lineAndComment("|", "or", "%rcx", "%rax"))
+                instructions.push(new OpBuilder(Opcode.OR).withOperands(RCX, RAX).withComment("|").build());
                 break;
             case ast.BinaryOperator.BITWISE_XOR:
-                generatedParts.push(lineAndComment("^", "xor", "%rcx", "%rax"))
+                instructions.push(new OpBuilder(Opcode.XOR).withOperands(RCX, RAX).withComment("^").build());
                 break;
             case ast.BinaryOperator.BITWISE_SHIFT_LEFT:
-                generatedParts.push(lineAndComment("<<", "shl", "%rcx", "%rax"))
+                instructions.push(new OpBuilder(Opcode.SHL).withOperands(RCX, RAX).withComment("<<").build());
                 break;
             case ast.BinaryOperator.BITWISE_SHIFT_RIGHT:
-                generatedParts.push(lineAndComment(">>", "shr", "%rcx", "%rax"))
+                instructions.push(new OpBuilder(Opcode.SHR).withOperands(RCX, RAX).withComment(">>").build());
                 break;
             case ast.BinaryOperator.EQUAL:
-                generatedParts.push(line("cmpq", "%rcx", "%rax"))
-                generatedParts.push(line("movq", "$0", "%rax"));
-                generatedParts.push(line("sete", "%al"));
+                instructions.push(new OpBuilder(Opcode.CMP).withOperands(RCX, RAX).build());
+                instructions.push(new OpBuilder(Opcode.MOV).withOperands(0, RAX).build());
+                instructions.push(new OpBuilder(Opcode.SETE).withOperands(AL).build());
                 break;
             case ast.BinaryOperator.NOT_EQUAL:
-                generatedParts.push(line("cmpq", "%rcx", "%rax"))
-                generatedParts.push(line("movq", "$0", "%rax"));
-                generatedParts.push(line("setne", "%al"));
+                instructions.push(new OpBuilder(Opcode.CMP).withOperands(RCX, RAX).build());
+                instructions.push(new OpBuilder(Opcode.MOV).withOperands(0, RAX).build());
+                instructions.push(new OpBuilder(Opcode.SETNE).withOperands(AL).build());
                 break;
             case ast.BinaryOperator.LESS_THAN:
-                generatedParts.push(line("cmpq", "%rcx", "%rax"))
-                generatedParts.push(line("movq", "$0", "%rax"));
-                generatedParts.push(line("setl", "%al"));
+                instructions.push(new OpBuilder(Opcode.CMP).withOperands(RCX, RAX).build());
+                instructions.push(new OpBuilder(Opcode.MOV).withOperands(0, RAX).build());
+                instructions.push(new OpBuilder(Opcode.SETL).withOperands(AL).build());
                 break;
             case ast.BinaryOperator.LESS_THAN_OR_EQUAL:
-                generatedParts.push(line("cmpq", "%rcx", "%rax"))
-                generatedParts.push(line("movq", "$0", "%rax"));
-                generatedParts.push(line("setle", "%al"));
+                instructions.push(new OpBuilder(Opcode.CMP).withOperands(RCX, RAX).build());
+                instructions.push(new OpBuilder(Opcode.MOV).withOperands(0, RAX).build());
+                instructions.push(new OpBuilder(Opcode.SETLE).withOperands(AL).build());
                 break;
             case ast.BinaryOperator.GREATER_THAN:
-                generatedParts.push(line("cmpq", "%rcx", "%rax"))
-                generatedParts.push(line("movq", "$0", "%rax"));
-                generatedParts.push(line("setg", "%al"));
+                instructions.push(new OpBuilder(Opcode.CMP).withOperands(RCX, RAX).build());
+                instructions.push(new OpBuilder(Opcode.MOV).withOperands(0, RAX).build());
+                instructions.push(new OpBuilder(Opcode.SETG).withOperands(AL).build());
                 break;
             case ast.BinaryOperator.GREATER_THAN_OR_EQUAL:
-                generatedParts.push(line("cmpq", "%rcx", "%rax"))
-                generatedParts.push(line("movq", "$0", "%rax"));
-                generatedParts.push(line("setge", "%al"));
+                instructions.push(new OpBuilder(Opcode.CMP).withOperands(RCX, RAX).build());
+                instructions.push(new OpBuilder(Opcode.MOV).withOperands(0, RAX).build());
+                instructions.push(new OpBuilder(Opcode.SETGE).withOperands(AL).build());
                 break;
             case ast.BinaryOperator.OR:
-                generatedParts.push(lineAndComment("|| start", "cmpq", "$0", "%rax"))
-                generatedParts.push(lineAndComment("|| short circuit", "je", "_clause" + id))
-                generatedParts.push(line("movq", "$1", "%rax"));
-                generatedParts.push(line("jmp", "_end" + id))
-                generatedParts.push(label("_clause" + id))
-                generatedParts.push(line("movq", "%rcx", "%rax"))
-                generatedParts.push(line("cmpq", "$0", "%rax"))
-                generatedParts.push(line("movq", "$0", "%rax"))
-                generatedParts.push(lineAndComment("|| end", "setne", "%al"));
-                generatedParts.push(label("_end" + id))
+                let clauseLabel = "_clause_" + id;
+                let endLabel = "_end_" + id;
+                instructions.push(new OpBuilder(Opcode.CMP).withOperands(0, RAX).withComment("|| start").build());
+                instructions.push(new OpBuilder(Opcode.JE).withOperands(clauseLabel).withComment("|| short circuit").build());
+                instructions.push(new OpBuilder(Opcode.MOV).withOperands(1, RAX).build());
+                instructions.push(new OpBuilder(Opcode.JMP).withOperands(endLabel).build());
+                instructions.push(new Label(clauseLabel));
+                instructions.push(new OpBuilder(Opcode.MOV).withOperands(RCX, RAX).build());
+                instructions.push(new OpBuilder(Opcode.CMP).withOperands(0, RAX).build());
+                instructions.push(new OpBuilder(Opcode.MOV).withOperands(0, RAX).build());
+                instructions.push(new OpBuilder(Opcode.SETNE).withOperands(AL).withComment("|| end").build());
+                instructions.push(new Label(endLabel));
                 break;
             case ast.BinaryOperator.AND:
-                generatedParts.push(lineAndComment("&& start", "cmpq", "$0", "%rax"))
-                generatedParts.push(lineAndComment("&& short circuit", "je", "_end" + id))
-                generatedParts.push(line("movq", "%rcx", "%rax"))
-                generatedParts.push(line("cmpq", "$0", "%rax"))
-                generatedParts.push(line("movq", "$0", "%rax"))
-                generatedParts.push(lineAndComment("&& end", "setne", "%al"));
-                generatedParts.push(label("_end" + id))
+                endLabel = "_end_" + id;
+                instructions.push(new OpBuilder(Opcode.CMP).withOperands(0, RAX).withComment("&& start").build());
+                instructions.push(new OpBuilder(Opcode.JE).withOperands(endLabel).withComment("&& short circuit").build());
+                instructions.push(new OpBuilder(Opcode.MOV).withOperands(RCX, RAX).build());
+                instructions.push(new OpBuilder(Opcode.CMP).withOperands(0, RAX).build());
+                instructions.push(new OpBuilder(Opcode.MOV).withOperands(0, RAX).build());
+                instructions.push(new OpBuilder(Opcode.SETNE).withOperands(AL).withComment("&& end").build());
+                instructions.push(new Label(endLabel));
                 break;
         }
     } else if (expression instanceof ast.UnOp) {
         const operator: ast.UnaryOperator = expression.operator;
         switch (operator) {
             case ast.UnaryOperator.NEGATION:
-                generatedParts.push(generateExpression(expression.expression))
-                generatedParts.push(line("neg", "%rax"));
+                instructions = instructions.concat(generateExpression(expression.expression))
+                instructions.push(new OpBuilder(Opcode.NEG).withOperands(RAX).build());
                 break;
             case ast.UnaryOperator.LOGICAL_NEGATION:
-                generatedParts.push(generateExpression(expression.expression))
-                generatedParts.push(line("cmpq", "$0", "%rax"));
-                generatedParts.push(line("movq", "$0", "%rax"));
-                generatedParts.push(line("sete", "%al"));
+                instructions = instructions.concat(generateExpression(expression.expression))
+                instructions.push(new OpBuilder(Opcode.CMP).withOperands(0, RAX).build());
+                instructions.push(new OpBuilder(Opcode.MOV).withOperands(0, RAX).build());
+                instructions.push(new OpBuilder(Opcode.SETE).withOperands(AL).build());
                 break;
             case ast.UnaryOperator.BITWISE_COMPLEMENT:
-                generatedParts.push(generateExpression(expression.expression))
-                generatedParts.push(line("xor", "%rax", "0xFFFF"));
+                instructions = instructions.concat(generateExpression(expression.expression))
+                instructions.push(new OpBuilder(Opcode.XOR).withOperands(RAX, "0xFFFF").build());
                 break;
         }
     } else if (expression instanceof ast.Constant) {
-        generatedParts.push(line("movq", "$" + expression.value, "%rax"));
+        instructions.push(new OpBuilder(Opcode.MOV).withOperands(expression.value, RAX).build());
     } else if (expression instanceof ast.Assignment) {
         const identifier = expression.identifier;
-        generatedParts.push(generateExpression(expression.expression))
-        generatedParts.push(lineAndComment("`" + identifier + "` assignment", "movq", "%rax", contextStack[contextStack.length - 1].getIdentifier(identifier) + "(%rbp)"));
+        instructions = instructions.concat(generateExpression(expression.expression))
+        const size = contextStack[contextStack.length - 1].getIdentifier(identifier);
+        instructions.push(new OpBuilder(Opcode.MOV).withOperands(RAX, Register.offset(Register.RBP, size)).withComment(`\`${identifier}\` assignment`).build());
     } else if (expression instanceof ast.VarReference) {
         const identifier = expression.identifier;
-        generatedParts.push(lineAndComment("`" + identifier + "` reference", "movq", contextStack[contextStack.length - 1].getIdentifier(identifier) + "(%rbp)", "%rax"));
-    } else if (expression instanceof CondExp) {
+        const size = contextStack[contextStack.length - 1].getIdentifier(identifier);
+        instructions.push(new OpBuilder(Opcode.MOV).withOperands(Register.offset(Register.RBP, size), RAX).withComment(`\`${identifier}\` reference`).build());
+    } else if (expression instanceof ast.CondExp) {
         const id = uniq.get();
-        generatedParts.push(generateExpression(expression.condition));
-        generatedParts.push(lineAndComment("if", "cmpq", "$0", "%rax"))
-        generatedParts.push(lineAndComment("false", "je", "_else_" + id))
-        generatedParts.push(generateExpression(expression.ifExp));
-        generatedParts.push(lineAndComment("if done", "jmp", "_post_conditional_" + id))
-        generatedParts.push(label("_else_" + id))
-        generatedParts.push(generateExpression(expression.elseExp));
-        generatedParts.push(label("_post_conditional_" + id))
+        const postConditionalLabel = "_post_conditional_" + id;
+        const elseLabel = "_else_" + id;
+
+        instructions = instructions.concat(generateExpression(expression.condition));
+        instructions.push(new OpBuilder(Opcode.CMP).withOperands(0, RAX).withComment("if").build());
+        instructions.push(new OpBuilder(Opcode.JE).withOperands(elseLabel).withComment("false").build());
+
+        //if true
+        instructions = instructions.concat(generateExpression(expression.ifExp));
+        instructions.push(new OpBuilder(Opcode.JMP).withOperands(postConditionalLabel).withComment("if done").build());
+        instructions.push(new Label(elseLabel));
+
+        //if false
+        instructions = instructions.concat(generateExpression(expression.elseExp));
+        instructions.push(new Label(postConditionalLabel));
     }
-    return generatedParts.join("\n");
-}
-
-function label(label: string) {
-    return label + ":";
-}
-
-function line(instruction, ...args): string {
-    return lineAndComment(undefined, instruction, ...args);
-}
-
-function lineAndComment(comment, instruction, ...args): string {
-    const parts = [];
-    parts.push(FOUR_SPACES);
-    parts.push(instruction);
-    parts.push(' '.repeat(8 - instruction.length));
-    const argsString = args.join(", ");
-    parts.push(argsString);
-    if (comment) {
-        const offset = 30 - argsString.length
-        parts.push(' '.repeat(offset) + " // " + comment);
-    }
-    return parts.join("");
+    return instructions;
 }

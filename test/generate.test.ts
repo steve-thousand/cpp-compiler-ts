@@ -3,6 +3,7 @@ import { Token } from '../src/token';
 import { lex } from '../src/lexer';
 import { parse, ast } from '../src/parser';
 import { generate } from '../src/generate';
+import { Instruction, Opcode, Register, Label, Global, OpBuilder } from '../src/assembly';
 
 
 describe('generator', function () {
@@ -10,78 +11,78 @@ describe('generator', function () {
         it('A simple case', function () {
             const tokens: Token[] = lex("int main() {\n\treturn 2;\n}");
             const tree: ast.AST = parse(tokens);
-            const generated = generate(tree);
-            expect(generated).to.equal(
-                " .globl _main\n" +
-                "_main:\n" +
-                "    movq    $2, %rax\n" +
-                "    ret                                    // main - return"
-            );
+            const generated: Instruction[] = generate(tree);
+            expect(generated).to.eql([
+                new Global("_main"),
+                new Label("_main"),
+                new OpBuilder(Opcode.MOV).withOperands(2, Register.RAX).build(),
+                new OpBuilder(Opcode.RET).withComment("main - return").build()
+            ]);
         });
         it('Negation', function () {
             const tokens: Token[] = lex("int main() {\n\treturn -5;\n}");
             const tree: ast.AST = parse(tokens);
-            const generated = generate(tree);
-            expect(generated).to.equal(
-                " .globl _main\n" +
-                "_main:\n" +
-                "    movq    $5, %rax\n" +
-                "    neg     %rax\n" +
-                "    ret                                    // main - return"
-            );
+            const generated: Instruction[] = generate(tree);
+            expect(generated).to.eql([
+                new Global("_main"),
+                new Label("_main"),
+                new OpBuilder(Opcode.MOV).withOperands(5, Register.RAX).build(),
+                new OpBuilder(Opcode.NEG).withOperands(Register.RAX).build(),
+                new OpBuilder(Opcode.RET).withComment("main - return").build()
+            ]);
         });
         it('Bitwise complement', function () {
             const tokens: Token[] = lex("int main() {\n\treturn ~5;\n}");
             const tree: ast.AST = parse(tokens);
-            const generated = generate(tree);
-            expect(generated).to.equal(
-                " .globl _main\n" +
-                "_main:\n" +
-                "    movq    $5, %rax\n" +
-                "    xor     %rax, 0xFFFF\n" +
-                "    ret                                    // main - return"
-            );
+            const generated: Instruction[] = generate(tree);
+            expect(generated).to.eql([
+                new Global("_main"),
+                new Label("_main"),
+                new OpBuilder(Opcode.MOV).withOperands(5, Register.RAX).build(),
+                new OpBuilder(Opcode.XOR).withOperands(Register.RAX, 0xFFFF).build(),
+                new OpBuilder(Opcode.RET).withComment("main - return").build()
+            ]);
         });
         it('Logical negation', function () {
             const tokens: Token[] = lex("int main() {\n\treturn !5;\n}");
             const tree: ast.AST = parse(tokens);
-            const generated = generate(tree);
-            expect(generated).to.equal(
-                " .globl _main\n" +
-                "_main:\n" +
-                "    movq    $5, %rax\n" +
-                "    cmpq    $0, %rax\n" +
-                "    movq    $0, %rax\n" +
-                "    sete    %al\n" +
-                "    ret                                    // main - return"
-            );
+            const generated: Instruction[] = generate(tree);
+            expect(generated).to.eql([
+                new Global("_main"),
+                new Label("_main"),
+                new OpBuilder(Opcode.MOV).withOperands(5, Register.RAX).build(),
+                new OpBuilder(Opcode.CMP).withOperands(0, Register.RAX).build(),
+                new OpBuilder(Opcode.MOV).withOperands(0, Register.RAX).build(),
+                new OpBuilder(Opcode.SETE).withOperands(Register.AL).build(),
+                new OpBuilder(Opcode.RET).withComment("main - return").build()
+            ]);
         });
         it('Declaration and reference', function () {
             const tokens: Token[] = lex("int main() {\n\tint a = 0; a = a + 1; return 2 * a;\n}");
             const tree: ast.AST = parse(tokens);
-            const generated = generate(tree);
-            expect(generated).to.equal(
-                " .globl _main\n" +
-                "_main:\n" +
-                "    subq    $8, %rsp                       // allocate `a`, 8 bytes\n" +
-                "    movq    $0, %rax\n" +
-                "    movq    %rax, 8(%rbp)                  // `a` assignment\n" +
-                "    movq    8(%rbp), %rax                  // `a` reference\n" +
-                "    pushq   %rax\n" +
-                "    movq    $1, %rax\n" +
-                "    movq    %rax, %rcx\n" +
-                "    popq    %rax\n" +
-                "    addq    %rcx, %rax                     // +\n" +
-                "    movq    %rax, 8(%rbp)                  // `a` assignment\n" +
-                "    movq    $2, %rax\n" +
-                "    pushq   %rax\n" +
-                "    movq    8(%rbp), %rax                  // `a` reference\n" +
-                "    movq    %rax, %rcx\n" +
-                "    popq    %rax\n" +
-                "    imulq   %rcx, %rax                     // *\n" +
-                "    addq    $8, %rsp                       // deallocate 8 bytes\n" +
-                "    ret                                    // main - return"
-            );
+            const generated: Instruction[] = generate(tree);
+            expect(generated).to.eql([
+                new Global("_main"),
+                new Label("_main"),
+                new OpBuilder(Opcode.SUB).withOperands(8, Register.RSP).withComment("allocate `a`, 8 bytes").build(),
+                new OpBuilder(Opcode.MOV).withOperands(0, Register.RAX).build(),
+                new OpBuilder(Opcode.MOV).withOperands(Register.RAX, Register.offset(Register.RBP, 8)).withComment("`a` assignment").build(),
+                new OpBuilder(Opcode.MOV).withOperands(Register.offset(Register.RBP, 8), Register.RAX).withComment("`a` reference").build(),
+                new OpBuilder(Opcode.PUSH).withOperands(Register.RAX).build(),
+                new OpBuilder(Opcode.MOV).withOperands(1, Register.RAX).build(),
+                new OpBuilder(Opcode.MOV).withOperands(Register.RAX, Register.RCX).build(),
+                new OpBuilder(Opcode.POP).withOperands(Register.RAX).build(),
+                new OpBuilder(Opcode.ADD).withOperands(Register.RCX, Register.RAX).withComment("+").build(),
+                new OpBuilder(Opcode.MOV).withOperands(Register.RAX, Register.offset(Register.RBP, 8)).withComment("`a` assignment").build(),
+                new OpBuilder(Opcode.MOV).withOperands(2, Register.RAX).build(),
+                new OpBuilder(Opcode.PUSH).withOperands(Register.RAX).build(),
+                new OpBuilder(Opcode.MOV).withOperands(Register.offset(Register.RBP, 8), Register.RAX).withComment("`a` reference").build(),
+                new OpBuilder(Opcode.MOV).withOperands(Register.RAX, Register.RCX).build(),
+                new OpBuilder(Opcode.POP).withOperands(Register.RAX).build(),
+                new OpBuilder(Opcode.IMUL).withOperands(Register.RCX, Register.RAX).withComment("*").build(),
+                new OpBuilder(Opcode.ADD).withOperands(8, Register.RSP).withComment("deallocate 8 bytes").build(),
+                new OpBuilder(Opcode.RET).withComment("main - return").build()
+            ]);
         });
     });
 });

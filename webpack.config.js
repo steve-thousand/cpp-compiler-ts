@@ -19,5 +19,8 @@ module.exports = {
         filename: 'bundle.js',
         path: path.resolve(__dirname, 'dist'),
     },
-    target: 'node'
+    target: 'node',
+    optimization: {
+        minimize: false
+    },
 };
