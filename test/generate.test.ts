@@ -84,5 +84,26 @@ describe('generator', function () {
                 new OpBuilder(Opcode.RET).withComment("main - return").build()
             ]);
         });
+        it('Compound statements', function () {
+            const tokens: Token[] = lex("int main() {\n\tint a = 0; {a = 1; int b = 2;} return a;\n}");
+            const tree: ast.AST = parse(tokens);
+            const generated: Instruction[] = new InstructionGenerator().generate(tree);
+            expect(generated).to.eql([
+                new Global("_main"),
+                new Label("_main"),
+                new OpBuilder(Opcode.SUB).withOperands(8, Register.RSP).withComment("allocate `a`, 8 bytes").build(),
+                new OpBuilder(Opcode.MOV).withOperands(0, Register.RAX).build(),
+                new OpBuilder(Opcode.MOV).withOperands(Register.RAX, Register.offset(Register.RBP, 8)).withComment("`a` assignment").build(),
+                new OpBuilder(Opcode.MOV).withOperands(1, Register.RAX).build(),
+                new OpBuilder(Opcode.MOV).withOperands(Register.RAX, Register.offset(Register.RBP, 8)).withComment("`a` assignment").build(),
+                new OpBuilder(Opcode.SUB).withOperands(8, Register.RSP).withComment("allocate `b`, 8 bytes").build(),
+                new OpBuilder(Opcode.MOV).withOperands(2, Register.RAX).build(),
+                new OpBuilder(Opcode.MOV).withOperands(Register.RAX, Register.offset(Register.RBP, 16)).withComment("`b` assignment").build(),
+                new OpBuilder(Opcode.ADD).withOperands(8, Register.RSP).withComment("deallocate 8 bytes").build(), //deallocating bytes from compound statement
+                new OpBuilder(Opcode.MOV).withOperands(Register.offset(Register.RBP, 8), Register.RAX).withComment("`a` reference").build(),
+                new OpBuilder(Opcode.ADD).withOperands(8, Register.RSP).withComment("deallocate 8 bytes").build(),
+                new OpBuilder(Opcode.RET).withComment("main - return").build()
+            ]);
+        });
     });
 });

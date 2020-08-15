@@ -1,5 +1,6 @@
 import { Token, TokenType } from './token';
 import * as ast from './ast';
+import { Compound } from './ast';
 
 export { ast as ast }
 
@@ -128,11 +129,13 @@ function isCompoundAssignment(tokenType: TokenType) {
 }
 
 /**
+ * Grammar. {} indicates repetition
+ * 
  * <PROGRAM> = <FUNCTION>
- * <FUNCTION> = "int" <IDENTIFIER>"(){" <BLOCK_ITEM[]> "}""
+ * <FUNCTION> = "int" <IDENTIFIER>"(){" { <BLOCK_ITEM> } "}""
  * <BLOCK_ITEM> = <STATEMENT> | <DECLARATION>
  * <DECLARATION> = "int" IDENTIFIER {"=" <EXPRESSION>} ";"
- * <STATEMENT> = return <EXPRESSION> ";" | <EXPRESSION> ";" | "if(" <EXPRESSION> ")" STATEMENT { "else" <STATEMENT> }
+ * <STATEMENT> = return <EXPRESSION> ";" | <EXPRESSION> ";" | "if(" <EXPRESSION> ")" STATEMENT { "else" <STATEMENT> } | "{" { <BLOCK_ITEM> } "}"
  * <EXPRESSION> = IDENTIFIER ASSIGNMENT_OPERATOR <EXPRESSION> | <CONDITIONAL_EXP>
  * <CONDITIONAL_EXP> = <LOGICAL_OR_EXP> { "?" <EXPRESSION> ":" <CONDITIONAL_EXP> }
  * <LOGICAL_OR_EXP> = <LOGICAL_AND_EXP> { "||" <LOGICAL_AND_EXP }
@@ -187,7 +190,7 @@ const GRAMMAR = {
                 tokens.shift(); //"="
                 expression = this.EXPRESSION(tokens);
             }
-            const declaration = new ast.Declaration(identifier.value, expression);
+            const declaration = new ast.Declare(identifier.value, expression);
             tokens.shift(); //";"
             return declaration;
         }
@@ -210,19 +213,23 @@ const GRAMMAR = {
             const condition = this.EXPRESSION(tokens);
             tokens.shift(); //")"
             // @ts-ignore
-            const braces = tokens[0].type === TokenType.BRACE_OPEN;
-            if (braces) tokens.shift(); //optional "{"
             const ifStatement = this.STATEMENT(tokens);
-            if (braces) tokens.shift(); //optional "}"
             let elseStatement;
             // @ts-ignore
             if (tokens[0].type === TokenType.ELSE) {
                 tokens.shift(); //"else"
-                if (braces) tokens.shift(); //optional "{"
                 elseStatement = this.STATEMENT(tokens);
-                if (braces) tokens.shift(); //optional "}"
             }
             return new ast.Conditional(condition, ifStatement, elseStatement);
+        } else if (tokens[0].type === TokenType.BRACE_OPEN) {
+            tokens.shift(); //"{"
+            const blockItems = []
+            // @ts-ignore
+            while (tokens[0].type !== TokenType.BRACE_CLOSE) {
+                blockItems.push(this.BLOCK_ITEM(tokens));
+            }
+            tokens.shift(); //"}"
+            return new ast.Compound(blockItems);
         }
     },
     EXPRESSION: function (tokens: Token[]) {
