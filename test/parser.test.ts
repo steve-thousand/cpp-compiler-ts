@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { lex } from '../src/lexer';
 import { parse, ast } from '../src/parser';
-import { BinOp, CondExp } from '../src/ast';
+import { BinOp, CondExp, Constant } from '../src/ast';
 
 
 describe('parser', function () {
@@ -518,7 +518,7 @@ describe('parser', function () {
                 new ast.Program(
                     new ast.Func(
                         "main", [
-                        new ast.Declaration("a", new ast.Constant(0)),
+                        new ast.Declare("a", new ast.Constant(0)),
                         new ast.Return(new ast.VarReference("a"))
                     ]
                     )
@@ -533,7 +533,7 @@ describe('parser', function () {
                 new ast.Program(
                     new ast.Func(
                         "main", [
-                        new ast.Declaration("a", new ast.Constant(0)),
+                        new ast.Declare("a", new ast.Constant(0)),
                         new ast.ExpStatement(new ast.Assignment("a", new ast.BinOp(
                             ast.BinaryOperator.ADDITION,
                             new ast.VarReference("a"),
@@ -554,7 +554,7 @@ describe('parser', function () {
                 new ast.Program(
                     new ast.Func(
                         "main", [
-                        new ast.Declaration("a", new ast.Constant(2)),
+                        new ast.Declare("a", new ast.Constant(2)),
                         new ast.ExpStatement(new ast.Assignment("a", new ast.BinOp(
                             ast.BinaryOperator.ADDITION,
                             new ast.VarReference("a"),
@@ -576,7 +576,9 @@ describe('parser', function () {
                         "main", [
                         new ast.Conditional(
                             new ast.Constant(1),
-                            new ast.ExpStatement(new ast.Assignment("a", new ast.Constant(2)))
+                            new ast.Compound([
+                                new ast.ExpStatement(new ast.Assignment("a", new ast.Constant(2)))
+                            ]),
                         ),
                         new ast.Return(new ast.VarReference("a"))
                     ]
@@ -594,8 +596,12 @@ describe('parser', function () {
                         "main", [
                         new ast.Conditional(
                             new ast.Constant(1),
-                            new ast.ExpStatement(new ast.Assignment("a", new ast.Constant(2))),
-                            new ast.ExpStatement(new ast.Assignment("a", new ast.Constant(3)))
+                            new ast.Compound([
+                                new ast.ExpStatement(new ast.Assignment("a", new ast.Constant(2)))
+                            ]),
+                            new ast.Compound([
+                                new ast.ExpStatement(new ast.Assignment("a", new ast.Constant(3)))
+                            ])
                         ),
                         new ast.Return(new ast.VarReference("a"))
                     ]
@@ -614,6 +620,25 @@ describe('parser', function () {
                         new ast.Return(
                             new CondExp(new ast.Constant(1), new ast.Constant(2), new ast.Constant(3))
                         )
+                    ]
+                    )
+                )
+            )).to.eql(tree);
+        });
+
+        it('Compound statements', function () {
+            const tokens = lex("int main() {\n\tint a = 0; {a = 1; int b = 2;} return a;\n}");
+            const tree = parse(tokens);
+            expect(new ast.AST(
+                new ast.Program(
+                    new ast.Func(
+                        "main", [
+                        new ast.Declare("a", new Constant(0)),
+                        new ast.Compound([
+                            new ast.ExpStatement(new ast.Assignment("a", new Constant(1))),
+                            new ast.Declare("b", new Constant(2))
+                        ]),
+                        new ast.Return(new ast.VarReference("a"))
                     ]
                     )
                 )

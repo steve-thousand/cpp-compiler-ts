@@ -103,15 +103,6 @@ export class Return extends Statement {
         this.expression = expression;
     }
 }
-export class Declaration extends Statement {
-    readonly identifier: string;
-    readonly expression: Expression;
-    constructor(identifier: string, expression?: Expression) {
-        super();
-        this.identifier = identifier;
-        this.expression = expression;
-    }
-}
 export class ExpStatement extends Statement {
     readonly expression: Expression;
     constructor(expression: Expression) {
@@ -130,15 +121,36 @@ export class Conditional extends Statement {
         this.elseStatement = elseStatement;
     }
 }
+export class Compound extends Statement {
+    readonly blockItems: BlockItem[] = [];
+    constructor(blockItems: BlockItem[]) {
+        super();
+        this.blockItems = blockItems;
+    }
+}
+
+export class Declaration implements Node { }
+
+export class Declare extends Declaration {
+    readonly identifier: string;
+    readonly expression: Expression;
+    constructor(identifier: string, expression?: Expression) {
+        super();
+        this.identifier = identifier;
+        this.expression = expression;
+    }
+}
+
+export type BlockItem = Statement | Declaration;
 
 export class FunctionDeclaration implements Node { }
 export class Func extends FunctionDeclaration {
     readonly identifier: string;
-    readonly statements: Statement[]
-    constructor(identifier: string, statements: Statement[]) {
+    readonly blockItems: BlockItem[];
+    constructor(identifier: string, blockItems: BlockItem[]) {
         super();
         this.identifier = identifier;
-        this.statements = statements;
+        this.blockItems = blockItems;
     }
 }
 
