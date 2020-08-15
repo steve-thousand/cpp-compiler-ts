@@ -25,6 +25,9 @@ export enum Opcode {
     XOR,
 }
 
+/**
+ * Is this really needed anymore?
+ */
 enum RegisterIndicator {
     A,
     B,
@@ -113,6 +116,11 @@ export class Register {
     }
 }
 
+/**
+ * I should really look into the nomenclature here because I am not entirely sure that every line of code in
+ * an assembly program is technically an "instruction". For instance, are labels instructions? How about
+ * declaring data like text?
+ */
 export interface Instruction {
     toAssembly(): string
 }
@@ -174,11 +182,9 @@ export class OpBuilder {
     }
 }
 
-const FOUR_SPACES = "    ";
-
 function lineAndComment(comment, opcode: Opcode, operands: Operand[]): string {
     const parts = [];
-    parts.push(FOUR_SPACES);
+    parts.push("    ");
 
     const opcodeName = Opcode[opcode].toLowerCase();
     parts.push(opcodeName);

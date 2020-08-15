@@ -2,7 +2,7 @@ import { expect } from 'chai';
 import { Token } from '../src/token';
 import { lex } from '../src/lexer';
 import { parse, ast } from '../src/parser';
-import { generate } from '../src/generate';
+import { InstructionGenerator } from '../src/generate';
 import { Instruction, Opcode, Register, Label, Global, OpBuilder } from '../src/assembly';
 
 
@@ -11,7 +11,7 @@ describe('generator', function () {
         it('A simple case', function () {
             const tokens: Token[] = lex("int main() {\n\treturn 2;\n}");
             const tree: ast.AST = parse(tokens);
-            const generated: Instruction[] = generate(tree);
+            const generated: Instruction[] = new InstructionGenerator().generate(tree);
             expect(generated).to.eql([
                 new Global("_main"),
                 new Label("_main"),
@@ -22,7 +22,7 @@ describe('generator', function () {
         it('Negation', function () {
             const tokens: Token[] = lex("int main() {\n\treturn -5;\n}");
             const tree: ast.AST = parse(tokens);
-            const generated: Instruction[] = generate(tree);
+            const generated: Instruction[] = new InstructionGenerator().generate(tree);
             expect(generated).to.eql([
                 new Global("_main"),
                 new Label("_main"),
@@ -34,19 +34,19 @@ describe('generator', function () {
         it('Bitwise complement', function () {
             const tokens: Token[] = lex("int main() {\n\treturn ~5;\n}");
             const tree: ast.AST = parse(tokens);
-            const generated: Instruction[] = generate(tree);
+            const generated: Instruction[] = new InstructionGenerator().generate(tree);
             expect(generated).to.eql([
                 new Global("_main"),
                 new Label("_main"),
                 new OpBuilder(Opcode.MOV).withOperands(5, Register.RAX).build(),
-                new OpBuilder(Opcode.XOR).withOperands(Register.RAX, 0xFFFF).build(),
+                new OpBuilder(Opcode.XOR).withOperands(Register.RAX, "0xFFFF").build(),
                 new OpBuilder(Opcode.RET).withComment("main - return").build()
             ]);
         });
         it('Logical negation', function () {
             const tokens: Token[] = lex("int main() {\n\treturn !5;\n}");
             const tree: ast.AST = parse(tokens);
-            const generated: Instruction[] = generate(tree);
+            const generated: Instruction[] = new InstructionGenerator().generate(tree);
             expect(generated).to.eql([
                 new Global("_main"),
                 new Label("_main"),
@@ -60,7 +60,7 @@ describe('generator', function () {
         it('Declaration and reference', function () {
             const tokens: Token[] = lex("int main() {\n\tint a = 0; a = a + 1; return 2 * a;\n}");
             const tree: ast.AST = parse(tokens);
-            const generated: Instruction[] = generate(tree);
+            const generated: Instruction[] = new InstructionGenerator().generate(tree);
             expect(generated).to.eql([
                 new Global("_main"),
                 new Label("_main"),
