@@ -644,5 +644,90 @@ describe('parser', function () {
                 )
             )).to.eql(tree);
         });
+
+        it('For loop', function () {
+            const tokens = lex("int main() {\n\tfor(; i < 10; i += 1) {} return 1;\n}");
+            const tree = parse(tokens);
+            expect(tree).to.eql(new ast.AST(
+                new ast.Program(
+                    new ast.Func(
+                        "main", [
+                        new ast.For(
+                            new ast.ExpStatement(),
+                            new ast.BinOp(
+                                ast.BinaryOperator.LESS_THAN,
+                                new ast.VarReference("i"),
+                                new ast.Constant(10)
+                            ),
+                            new ast.Assignment("i", new ast.BinOp(
+                                ast.BinaryOperator.ADDITION,
+                                new ast.VarReference("i"),
+                                new ast.Constant(1)
+                            )),
+                            new ast.Compound([])
+                        ),
+                        new ast.Return(new ast.Constant(1))
+                    ]
+                    )
+                )
+            ));
+        });
+
+        it('For declare loop', function () {
+            const tokens = lex("int main() {\n\tfor(int i = 0; i < 10; i += 1) {} return 1;\n}");
+            const tree = parse(tokens);
+            expect(tree).to.eql(new ast.AST(
+                new ast.Program(
+                    new ast.Func(
+                        "main", [
+                        new ast.ForDecl(
+                            new ast.Declare("i", new ast.Constant(0)),
+                            new ast.BinOp(
+                                ast.BinaryOperator.LESS_THAN,
+                                new ast.VarReference("i"),
+                                new ast.Constant(10)
+                            ),
+                            new ast.Assignment("i", new ast.BinOp(
+                                ast.BinaryOperator.ADDITION,
+                                new ast.VarReference("i"),
+                                new ast.Constant(1)
+                            )),
+                            new ast.Compound([])
+                        ),
+                        new ast.Return(new ast.Constant(1))
+                    ]
+                    )
+                )
+            ));
+        });
+
+        it('Do loop', function () {
+            const tokens = lex("int main() {\n\tint a = 0; do { a += 3; } while(a < 10); return a;\n}");
+            const tree = parse(tokens);
+            expect(tree).to.eql(new ast.AST(
+                new ast.Program(
+                    new ast.Func(
+                        "main", [
+                        new ast.Declare("a", new Constant(0)),
+                        new ast.Do(
+                            new ast.Compound([
+                                new ast.ExpStatement(new ast.Assignment("a", new ast.BinOp(
+                                    ast.BinaryOperator.ADDITION,
+                                    new ast.VarReference("a"),
+                                    new ast.Constant(3)
+                                )))
+                            ]),
+                            new ast.BinOp(
+                                ast.BinaryOperator.LESS_THAN,
+                                new ast.VarReference("a"),
+                                new ast.Constant(10)
+                            )
+                        ),
+                        new ast.Return(new ast.VarReference("a"))
+                    ]
+                    )
+                )
+            ));
+        });
     });
 });

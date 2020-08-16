@@ -1,48 +1,51 @@
+/**
+ * These enums don't technically need string values, but it is VERY helpful for debugging.
+ */
 export enum Opcode {
-    ADD,
-    AND,
-    CDQ,
-    CMP,
-    IDIV,
-    IMUL,
-    JE,
-    JMP,
-    MOV,
-    NEG,
-    OR,
-    POP,
-    PUSH,
-    RET,
-    SETE,
-    SETG,
-    SETGE,
-    SETL,
-    SETLE,
-    SETNE,
-    SHL,
-    SHR,
-    SUB,
-    XOR,
+    ADD = "ADD",
+    AND = "AND",
+    CDQ = "CDQ",
+    CMP = "CMP",
+    IDIV = "IDIV",
+    IMUL = "IMUL",
+    JE = "JE",
+    JMP = "JMP",
+    MOV = "MOV",
+    NEG = "NEG",
+    OR = "OR",
+    POP = "POP",
+    PUSH = "PUSH",
+    RET = "RET",
+    SETE = "SETE",
+    SETG = "SETG",
+    SETGE = "SETGE",
+    SETL = "SETL",
+    SETLE = "SETLE",
+    SETNE = "SETNE",
+    SHL = "SHL",
+    SHR = "SHR",
+    SUB = "SUB",
+    XOR = "XOR",
 }
 
 /**
  * Is this really needed anymore?
  */
 enum RegisterIndicator {
-    A,
-    B,
-    C,
-    D,
-    STACK_POINTER,
-    BASE_POINTER
+    A = "A",
+    B = "B",
+    C = "C",
+    D = "D",
+    STACK_POINTER = "STACK_POINTER",
+    BASE_POINTER = "BASE_POINTER",
 }
 
 enum RegisterLength {
-    CHAR_LOWER,     //*l
-    CHAR_HIGHER,    //*h
-    SHORT,          //*x
-    INT,            //e*x
-    LONG            //r*x
+    CHAR_LOWER = "CHAR_LOWER",      //*l
+    CHAR_HIGHER = "CHAR_HIGHER",    //*h
+    SHORT = "SHORT",                //*x
+    INT = "INT",                    //e*x
+    LONG = "LONG"                   //r*x
 }
 
 export class Register {

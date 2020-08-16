@@ -105,5 +105,47 @@ describe('generator', function () {
                 new OpBuilder(Opcode.RET).withComment("main - return").build()
             ]);
         });
+        it('Do loop', function () {
+            const tokens: Token[] = lex("int main() {\n\tint a = 0; do { a += 3; } while(a < 10); return a;\n}");
+            const tree: ast.AST = parse(tokens);
+            const generated: Instruction[] = new InstructionGenerator().generate(tree);
+            expect(generated).to.eql([
+                new Global("_main"),
+                new Label("_main"),
+                new OpBuilder(Opcode.SUB).withOperands(8, Register.RSP).withComment("allocate `a`, 8 bytes").build(),
+                new OpBuilder(Opcode.MOV).withOperands(0, Register.RAX).build(),
+                new OpBuilder(Opcode.MOV).withOperands(Register.RAX, Register.offset(Register.RBP, 8)).withComment("`a` assignment").build(),
+
+                //do
+                new Label("_loop_1"),
+
+                // a += 3
+                new OpBuilder(Opcode.MOV).withOperands(Register.offset(Register.RBP, 8), Register.RAX).withComment("`a` reference").build(),
+                new OpBuilder(Opcode.PUSH).withOperands(Register.RAX).build(),
+                new OpBuilder(Opcode.MOV).withOperands(3, Register.RAX).build(),
+                new OpBuilder(Opcode.MOV).withOperands(Register.RAX, Register.RCX).build(),
+                new OpBuilder(Opcode.POP).withOperands(Register.RAX).build(),
+                new OpBuilder(Opcode.ADD).withOperands(Register.RCX, Register.RAX).withComment("+").build(),
+                new OpBuilder(Opcode.MOV).withOperands(Register.RAX, Register.offset(Register.RBP, 8)).withComment("`a` assignment").build(),
+
+                // while (a < 10);
+                new OpBuilder(Opcode.MOV).withOperands(Register.offset(Register.RBP, 8), Register.RAX).withComment("`a` reference").build(),
+                new OpBuilder(Opcode.PUSH).withOperands(Register.RAX).build(),
+                new OpBuilder(Opcode.MOV).withOperands(10, Register.RAX).build(),
+                new OpBuilder(Opcode.MOV).withOperands(Register.RAX, Register.RCX).build(),
+                new OpBuilder(Opcode.POP).withOperands(Register.RAX).build(),
+                new OpBuilder(Opcode.CMP).withOperands(Register.RCX, Register.RAX).build(),
+                new OpBuilder(Opcode.MOV).withOperands(0, Register.RAX).build(),
+                new OpBuilder(Opcode.SETL).withOperands(Register.AL).build(),
+                new OpBuilder(Opcode.CMP).withOperands(0, Register.RAX).build(),
+                new OpBuilder(Opcode.JE).withOperands("_end_loop_1").build(),
+                new OpBuilder(Opcode.JMP).withOperands("_loop_1").build(),
+                new Label("_end_loop_1"),
+                new OpBuilder(Opcode.MOV).withOperands(Register.offset(Register.RBP, 8), Register.RAX).withComment("`a` reference").build(),
+
+                new OpBuilder(Opcode.ADD).withOperands(8, Register.RSP).withComment("deallocate 8 bytes").build(),
+                new OpBuilder(Opcode.RET).withComment("main - return").build()
+            ]);
+        });
     });
 });

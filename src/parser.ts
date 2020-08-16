@@ -135,7 +135,12 @@ function isCompoundAssignment(tokenType: TokenType) {
  * <FUNCTION> = "int" <IDENTIFIER>"(){" { <BLOCK_ITEM> } "}""
  * <BLOCK_ITEM> = <STATEMENT> | <DECLARATION>
  * <DECLARATION> = "int" IDENTIFIER {"=" <EXPRESSION>} ";"
- * <STATEMENT> = return <EXPRESSION> ";" | <EXPRESSION> ";" | "if(" <EXPRESSION> ")" STATEMENT { "else" <STATEMENT> } | "{" { <BLOCK_ITEM> } "}"
+ * <STATEMENT> = return <EXPRESSION> ";" | <EXPRESSION>? ";" | 
+ *      "if(" <EXPRESSION> ")" STATEMENT { "else" <STATEMENT> } | "{" { <BLOCK_ITEM> } "}" | 
+ *      FOR "(" <EXPRESSION>? ";" <EXPRESSION>? ";" <EXPRESSION>?  ")" <STATEMENT> | 
+ *      FOR "(" <DECLARATION>? ";" <EXPRESSION>? ";" <EXPRESSION>?  ")" <STATEMENT> |
+ *      WHILE "(" <EXPRESSION> ")" <STATEMENT> | DO <STATEMENT> WHILE "(" <EXPRESSION> ");" |
+ *      BREAK; | CONTINUE;
  * <EXPRESSION> = IDENTIFIER ASSIGNMENT_OPERATOR <EXPRESSION> | <CONDITIONAL_EXP>
  * <CONDITIONAL_EXP> = <LOGICAL_OR_EXP> { "?" <EXPRESSION> ":" <CONDITIONAL_EXP> }
  * <LOGICAL_OR_EXP> = <LOGICAL_AND_EXP> { "||" <LOGICAL_AND_EXP }
@@ -204,7 +209,9 @@ const GRAMMAR = {
             return new ast.Return(expression);
         }
         expression = this.EXPRESSION(tokens);
-        if (expression) {
+        // @ts-ignore
+        if (expression || tokens[0].type === TokenType.SEMICOLON) {
+            //null expressions are valid, ie ";"
             tokens.shift(); //";"
             return new ast.ExpStatement(expression);
         } else if (tokens[0].type === TokenType.IF) {
@@ -230,6 +237,51 @@ const GRAMMAR = {
             }
             tokens.shift(); //"}"
             return new ast.Compound(blockItems);
+        } else if (tokens[0].type === TokenType.FOR) {
+            tokens.shift(); //"for"
+            tokens.shift(); //"("
+            let init = this.DECLARATION(tokens);
+            if (!init) {
+                init = this.EXPRESSION(tokens);
+                if (!init) {
+                    init = new ast.ExpStatement();
+                }
+                tokens.shift(); //";""
+            }
+            const condition = this.EXPRESSION(tokens);
+            tokens.shift(); //";"
+            const post = this.EXPRESSION(tokens);
+            tokens.shift(); //")"
+            const body = this.STATEMENT(tokens);
+            if (init instanceof ast.Declaration) {
+                return new ast.ForDecl(init, condition, post, body);
+            } else {
+                return new ast.For(init, condition, post, body);
+            }
+        } else if (tokens[0].type === TokenType.WHILE) {
+            tokens.shift(); //"while"
+            tokens.shift(); //"("
+            const condition = this.EXPRESSION(tokens);
+            tokens.shift(); //")"
+            const body = this.STATEMENT(tokens);
+            return new ast.While(condition, body);
+        } else if (tokens[0].type === TokenType.DO) {
+            tokens.shift(); //"do"
+            const body = this.STATEMENT(tokens);
+            tokens.shift(); //"while"
+            tokens.shift(); //"("
+            const condition = this.EXPRESSION(tokens);
+            tokens.shift(); //")"
+            tokens.shift(); //";"
+            return new ast.Do(body, condition);
+        } else if (tokens[0].type === TokenType.BREAK) {
+            tokens.shift(); //"break"
+            tokens.shift(); //";"
+            return new ast.Break();
+        } else if (tokens[0].type === TokenType.CONTINUE) {
+            tokens.shift(); //"continue"
+            tokens.shift(); //";"
+            return new ast.Continue();
         }
     },
     EXPRESSION: function (tokens: Token[]) {
@@ -238,7 +290,10 @@ const GRAMMAR = {
             const operator = tokens.shift(); //"="
             const compoundOperator = isCompoundAssignment(operator.type);
             if (compoundOperator !== false) {
-                return new ast.Assignment(identifier.value, new ast.BinOp(compoundOperator, new ast.VarReference(identifier.value), this.EXPRESSION(tokens)));
+                //this technically works, but is it cheating?
+                return new ast.Assignment(identifier.value, new ast.BinOp(
+                    compoundOperator, new ast.VarReference(identifier.value), this.EXPRESSION(tokens)
+                ));
             } else {
                 return new ast.Assignment(identifier.value, this.EXPRESSION(tokens));
             }

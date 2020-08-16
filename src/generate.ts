@@ -1,5 +1,6 @@
 import { ast } from './parser';
 import { Instruction, Opcode, Register, Label, Global, OpBuilder } from './assembly';
+import internal = require('stream');
 
 const RAX = Register.RAX;
 const RCX = Register.RCX;
@@ -109,6 +110,7 @@ export class InstructionGenerator {
 
     private uniq = new UniqueIdGenerator();
     private contextStack = new Stack<Context>();
+    private loopStack = new Stack<number>(); //will this work when we go to a new function call?
 
     generateExpression(expression: ast.Expression): Instruction[] {
         let instructions: Instruction[] = [];
@@ -303,16 +305,6 @@ export class InstructionGenerator {
         return instructions;
     }
 
-    generateBlockItem(blockItem: ast.BlockItem): Instruction[] {
-        let instructions: Instruction[] = [];
-        if (blockItem instanceof ast.Statement) {
-            instructions = instructions.concat(this.generateStatement(blockItem));
-        } else if (blockItem instanceof ast.Declaration) {
-            instructions = instructions.concat(this.generateDeclaration(blockItem));
-        }
-        return instructions;
-    }
-
     generateStatement(statement: ast.Statement): Instruction[] {
         let instructions: Instruction[] = [];
         if (statement instanceof ast.Return) {
@@ -328,7 +320,8 @@ export class InstructionGenerator {
             }
             instructions.push(new OpBuilder(Opcode.RET).withComment(this.contextStack.peek().getLabel() + " - return").build());
         } else if (statement instanceof ast.ExpStatement) {
-            instructions = instructions.concat(this.generateExpression(statement.expression));
+            if (statement.expression)
+                instructions = instructions.concat(this.generateExpression(statement.expression));
         } else if (statement instanceof ast.Conditional) {
 
             const id = this.uniq.get();
@@ -365,6 +358,86 @@ export class InstructionGenerator {
                     .withComment(`deallocate ${sizeDiff} bytes`)
                     .build());
             }
+        } else if (statement instanceof ast.For || statement instanceof ast.ForDecl) {
+            const id = this.uniq.get();
+            this.loopStack.push(id);
+            if (statement instanceof ast.For) {
+                if (statement.init) {
+                    instructions = instructions.concat(this.generateExpression(statement.init));
+                }
+            } else if (statement instanceof ast.ForDecl) {
+                instructions = instructions.concat(this.generateDeclaration(statement.decl));
+            }
+            instructions.push(new Label("_loop_" + id));
+
+            //evaluate condition to see if we should jump to the end
+            instructions = instructions.concat(this.generateExpression(statement.condition));
+            instructions.push(new OpBuilder(Opcode.CMP).withOperands(0, RAX).build());
+            instructions.push(new OpBuilder(Opcode.JE).withOperands("_end_loop_" + id).build());
+
+            //execute body
+            instructions = instructions.concat(this.generateStatement(statement.body));
+
+            //execute post-body
+            if (statement.post) {
+                instructions = instructions.concat(this.generateExpression(statement.post));
+            }
+
+            //back to top
+            instructions.push(new OpBuilder(Opcode.JMP).withOperands("_loop_" + id).build())
+
+            instructions.push(new Label("_end_loop_" + id));
+            this.loopStack.pop();
+        } else if (statement instanceof ast.While) {
+            const id = this.uniq.get();
+            this.loopStack.push(id);
+            instructions.push(new Label("_loop_" + id));
+
+            //evaluate condition to see if we should jump to the end
+            instructions = instructions.concat(this.generateExpression(statement.condition));
+            instructions.push(new OpBuilder(Opcode.CMP).withOperands(0, RAX).build());
+            instructions.push(new OpBuilder(Opcode.JE).withOperands("_end_loop_" + id).build());
+
+            //execute body
+            instructions = instructions.concat(this.generateStatement(statement.body));
+
+            //back to top
+            instructions.push(new OpBuilder(Opcode.JMP).withOperands("_loop_" + id).build())
+
+            instructions.push(new Label("_end_loop_" + id));
+            this.loopStack.pop();
+        } else if (statement instanceof ast.Do) {
+            const id = this.uniq.get();
+            this.loopStack.push(id);
+            instructions.push(new Label("_loop_" + id));
+
+            //execute body
+            instructions = instructions.concat(this.generateStatement(statement.body));
+
+            //evaluate condition to see if we should jump to the end
+            instructions = instructions.concat(this.generateExpression(statement.condition));
+            instructions.push(new OpBuilder(Opcode.CMP).withOperands(0, RAX).build());
+            instructions.push(new OpBuilder(Opcode.JE).withOperands("_end_loop_" + id).build());
+
+            //back to top
+            instructions.push(new OpBuilder(Opcode.JMP).withOperands("_loop_" + id).build())
+
+            instructions.push(new Label("_end_loop_" + id));
+            this.loopStack.pop();
+        } else if (statement instanceof ast.Break) {
+            instructions.push(new OpBuilder(Opcode.JMP).withOperands("_end_loop_" + this.loopStack.peek()).build());
+        } else if (statement instanceof ast.Continue) {
+            instructions.push(new OpBuilder(Opcode.JMP).withOperands("_loop_" + this.loopStack.peek()).build());
+        }
+        return instructions;
+    }
+
+    generateBlockItem(blockItem: ast.BlockItem): Instruction[] {
+        let instructions: Instruction[] = [];
+        if (blockItem instanceof ast.Statement) {
+            instructions = instructions.concat(this.generateStatement(blockItem));
+        } else if (blockItem instanceof ast.Declaration) {
+            instructions = instructions.concat(this.generateDeclaration(blockItem));
         }
         return instructions;
     }

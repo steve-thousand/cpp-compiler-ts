@@ -1,78 +1,90 @@
+/**
+ * The string values here are only for the sake of debugging. Trying to tell which token is which 
+ * given only an integer is hard.
+ */
 export enum TokenType {
 
-    BRACE_OPEN,
-    BRACE_CLOSE,
-    PARENTHESES_OPEN,
-    PARENTHESES_CLOSE,
-    SEMICOLON,
+    BRACE_OPEN = "{",
+    BRACE_CLOSE = "}",
+    PARENTHESES_OPEN = "(",
+    PARENTHESES_CLOSE = ")",
+    SEMICOLON = ";",
 
     /*
     UNARY
     */
 
-    UNARY_BITWISE_COMPLEMENT,
-    UNARY_LOGICAL_NEGATION,
+    UNARY_BITWISE_COMPLEMENT = "~",
+    UNARY_LOGICAL_NEGATION = "!",
 
     /*
     BINARY OPERATORS
     */
 
-    MINUS, //TODO for now this is subtraction and negation, is that gonna be weird?
+    MINUS = "-", //TODO for now this is subtraction and negation, is that gonna be weird?
 
-    BINARY_ADDITION,
-    BINARY_MULTIPLICATION,
-    BINARY_DIVISION,
-    BINARY_MODULO,
+    BINARY_ADDITION = "+",
+    BINARY_MULTIPLICATION = "*",
+    BINARY_DIVISION = "/",
+    BINARY_MODULO = "%",
 
-    BINARY_AND,
-    BINARY_OR,
+    BINARY_AND = "&&",
+    BINARY_OR = "||",
 
-    BINARY_BITWISE_AND,
-    BINARY_BITWISE_OR,
-    BINARY_BITWISE_XOR,
-    BINARY_BITWISE_SHIFT_LEFT,
-    BINARY_BITWISE_SHIFT_RIGHT,
+    BINARY_BITWISE_AND = "&",
+    BINARY_BITWISE_OR = "|",
+    BINARY_BITWISE_XOR = "^",
+    BINARY_BITWISE_SHIFT_LEFT = "<<",
+    BINARY_BITWISE_SHIFT_RIGHT = ">>",
 
-    BINARY_EQUAL,
-    BINARY_NOT_EQUAL,
-    BINARY_LESS_THAN,
-    BINARY_LESS_THAN_OR_EQUAL,
-    BINARY_GREATER_THAN,
-    BINARY_GREATER_THAN_OR_EQUAL,
+    BINARY_EQUAL = "==",
+    BINARY_NOT_EQUAL = "!=",
+    BINARY_LESS_THAN = "<",
+    BINARY_LESS_THAN_OR_EQUAL = "<=",
+    BINARY_GREATER_THAN = ">",
+    BINARY_GREATER_THAN_OR_EQUAL = ">=",
 
-    ASSIGNMENT,
+    ASSIGNMENT = "=",
 
-    COMPOUND_ASSIGNMENT_ADDITION,
-    COMPOUND_ASSIGNMENT_SUBTRACTION,
-    COMPOUND_ASSIGNMENT_MULTIPLICATION,
-    COMPOUND_ASSIGNMENT_DIVISION,
-    COMPOUND_ASSIGNMENT_MODULO,
-    COMPOUND_ASSIGNMENT_BITSHIFT_LEFT,
-    COMPOUND_ASSIGNMENT_BITSHIFT_RIGHT,
-    COMPOUND_ASSIGNMENT_BITWISE_AND,
-    COMPOUND_ASSIGNMENT_BITWISE_OR,
-    COMPOUND_ASSIGNMENT_BITWISE_XOR,
+    COMPOUND_ASSIGNMENT_ADDITION = "+=",
+    COMPOUND_ASSIGNMENT_SUBTRACTION = "-=",
+    COMPOUND_ASSIGNMENT_MULTIPLICATION = "*=",
+    COMPOUND_ASSIGNMENT_DIVISION = "/=",
+    COMPOUND_ASSIGNMENT_MODULO = "%=",
+    COMPOUND_ASSIGNMENT_BITSHIFT_LEFT = "<<=",
+    COMPOUND_ASSIGNMENT_BITSHIFT_RIGHT = ">>=",
+    COMPOUND_ASSIGNMENT_BITWISE_AND = "&=",
+    COMPOUND_ASSIGNMENT_BITWISE_OR = "|=",
+    COMPOUND_ASSIGNMENT_BITWISE_XOR = "^=",
 
-    COLON,
-    QUESTION_MARK,
+    COLON = ":",
+    QUESTION_MARK = "?",
 
     /*
     KEYWORDS
     */
 
-    INT,
-    RETURN,
-    IF,
-    ELSE,
+    INT = "int",
+    RETURN = "return",
+    IF = "if",
+    ELSE = "else",
+    FOR = "for",
+    WHILE = "while",
+    DO = "do",
+    BREAK = "break",
+    CONTINUE = "continue",
 
     /*
     VARIABLE
     */
 
-    IDENTIFIER,
-    LITERAL_INTEGER
+    IDENTIFIER = "identifier",
+    LITERAL_INTEGER = "literal_integer"
 }
 
+/**
+ * This map helps us quickly tell if a given string is likely to be a constant Token.
+ */
 const CONSTANT_TOKENS = {
     "{": TokenType.BRACE_OPEN,
     "}": TokenType.BRACE_CLOSE,
@@ -125,7 +137,12 @@ const CONSTANT_TOKENS = {
     "int": TokenType.INT,
     "return": TokenType.RETURN,
     "if": TokenType.IF,
-    "else": TokenType.ELSE
+    "else": TokenType.ELSE,
+    "for": TokenType.FOR,
+    "while": TokenType.WHILE,
+    "do": TokenType.DO,
+    "break": TokenType.BREAK,
+    "continue": TokenType.CONTINUE
 }
 
 export class Token {

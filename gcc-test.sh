@@ -1,5 +1,7 @@
 #!/bin/bash
 
+#TODO: IMPROVE THIS
+
 npm run-script build
 
 mkdir -p test-out

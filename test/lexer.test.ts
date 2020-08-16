@@ -251,5 +251,15 @@ describe('lexer', function () {
                 Token.ofTypeAndValue(TokenType.IDENTIFIER, "b")
             ]).to.eql(tokens)
         });
+        it('For', function () {
+            const tokens = lex("for(;;)");
+            expect([
+                Token.ofType(TokenType.FOR),
+                Token.ofType(TokenType.PARENTHESES_OPEN),
+                Token.ofType(TokenType.SEMICOLON),
+                Token.ofType(TokenType.SEMICOLON),
+                Token.ofType(TokenType.PARENTHESES_CLOSE),
+            ]).to.eql(tokens)
+        });
     });
 });
