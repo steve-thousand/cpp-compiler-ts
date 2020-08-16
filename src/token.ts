@@ -59,6 +59,7 @@ export enum TokenType {
 
     COLON = ":",
     QUESTION_MARK = "?",
+    COMMA = ",",
 
     /*
     KEYWORDS
@@ -133,6 +134,7 @@ const CONSTANT_TOKENS = {
 
     ":": TokenType.COLON,
     "?": TokenType.QUESTION_MARK,
+    ",": TokenType.COMMA,
 
     "int": TokenType.INT,
     "return": TokenType.RETURN,

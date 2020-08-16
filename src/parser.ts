@@ -1,6 +1,6 @@
 import { Token, TokenType } from './token';
 import * as ast from './ast';
-import { Compound } from './ast';
+import { FunctionDeclaration } from './ast';
 
 export { ast as ast }
 
@@ -129,10 +129,10 @@ function isCompoundAssignment(tokenType: TokenType) {
 }
 
 /**
- * Grammar. {} indicates repetition
+ * Grammar. {} indicates repetition. [] indicates optional. | indicates OR.
  * 
  * <PROGRAM> = <FUNCTION>
- * <FUNCTION> = "int" <IDENTIFIER>"(){" { <BLOCK_ITEM> } "}""
+ * <FUNCTION> = "int" <IDENTIFIER>"(" "int" <id> {["," "int" <id>]}"){" { <BLOCK_ITEM> } "}""
  * <BLOCK_ITEM> = <STATEMENT> | <DECLARATION>
  * <DECLARATION> = "int" IDENTIFIER {"=" <EXPRESSION>} ";"
  * <STATEMENT> = return <EXPRESSION> ";" | <EXPRESSION>? ";" | 
@@ -153,18 +153,36 @@ function isCompoundAssignment(tokenType: TokenType) {
  * <BITWISE_SHIFT_EXP> = <ADDITIVE_EXP> { ("<<" | ">>") <ADDITIVE_EXP> }
  * <ADDITIVE_EXP> = <TERM> { ("+" | "-") <TERM> }
  * <TERM> = <FACTOR> { ("*" | "/" | "%") <FACTOR> }
- * <FACTOR> = "(" <EXPRESSION> ")" | <UNARY_OPERATOR> <FACTOR> | <LITERAL> | IDENTIFIER
+ * <FACTOR> = <FUNCTION_CALL> | "(" <EXPRESSION> ")" | <UNARY_OPERATOR> <FACTOR> | <LITERAL> | IDENTIFIER
+ * <FUNCTION_CALL> = <id> "(" [ <EXPRESSION> { "," <EXPRESSION> } ] ")"
  */
 const GRAMMAR = {
     PROGRAM: function (tokens: Token[]) {
-        const functionDeclaration = this.FUNCTION(tokens);
-        return new ast.Program(functionDeclaration);
+        const functionDeclarations: FunctionDeclaration[] = [];
+        while (tokens.length > 0) {
+            const functionDeclaration = this.FUNCTION(tokens);
+            functionDeclarations.push(functionDeclaration);
+        }
+        return new ast.Program(functionDeclarations);
     },
     FUNCTION: function (tokens: Token[]) {
         if (tokens[0].type === TokenType.INT) {
             tokens.shift();
             const identifier = tokens.shift().value;
             tokens.shift(); //"("
+
+            const args: string[] = [];
+
+            // @ts-ignore
+            while (tokens[0].type !== TokenType.PARENTHESES_CLOSE) {
+                // @ts-ignore
+                if (tokens[0].type === TokenType.COMMA) {
+                    tokens.shift(); //","
+                } else if (tokens[0].type === TokenType.INT) {
+                    tokens.shift(); //"int"
+                    args.push(tokens.shift().value); //identifier
+                }
+            }
             tokens.shift(); //")"
             tokens.shift(); //"{"
             const statements: ast.Statement[] = [];
@@ -173,7 +191,7 @@ const GRAMMAR = {
                 statements.push(this.BLOCK_ITEM(tokens));
             }
             tokens.shift(); //"}"
-            const func = new ast.Func(identifier, statements);
+            const func = new ast.Func(identifier, args, statements);
             return func;
         }
     },
@@ -399,7 +417,10 @@ const GRAMMAR = {
         }
     },
     FACTOR: function (tokens: Token[]) {
-        if (tokens[0].type === TokenType.PARENTHESES_OPEN) {
+        const functionCall = this.FUNCTION_CALL(tokens);
+        if (functionCall) {
+            return functionCall;
+        } else if (tokens[0].type === TokenType.PARENTHESES_OPEN) {
             tokens.shift(); //"("
             const expression = this.EXPRESSION(tokens);
             tokens.shift(); //")"
@@ -412,6 +433,24 @@ const GRAMMAR = {
             return new ast.Constant(parseInt(tokens.shift().value));
         } else if (tokens[0].type === TokenType.IDENTIFIER) {
             return new ast.VarReference(tokens.shift().value);
+        }
+    },
+    FUNCTION_CALL: function (tokens: Token[]) {
+        if (tokens[0].type === TokenType.IDENTIFIER && tokens[1].type === TokenType.PARENTHESES_OPEN) {
+            const identifier = tokens.shift().value;
+            tokens.shift(); //"("
+            const args = [];
+            // @ts-ignore
+            while (tokens[0].type !== TokenType.PARENTHESES_CLOSE) {
+                // @ts-ignore
+                if (tokens[0].type === TokenType.COMMA) {
+                    tokens.shift(); //","
+                } else {
+                    args.push(this.EXPRESSION(tokens));
+                }
+            }
+            tokens.shift(); //")"
+            return new ast.FuncCall(identifier, args);
         }
     }
 }

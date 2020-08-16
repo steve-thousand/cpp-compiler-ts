@@ -1,6 +1,6 @@
 import { ast } from './parser';
 import { Instruction, Opcode, Register, Label, Global, OpBuilder } from './assembly';
-import internal = require('stream');
+import { FunctionDeclaration } from './ast';
 
 const RAX = Register.RAX;
 const RCX = Register.RCX;
@@ -46,9 +46,10 @@ class VariableMap {
 class Context {
     private label: string;
     private offset: number = 0;
-    private identifierMap: VariableMap = new VariableMap();
-    constructor(label: string) {
+    private identifierMap: VariableMap;
+    constructor(label: string, identifierMap: VariableMap = new VariableMap()) {
         this.label = label;
+        this.identifierMap = identifierMap;
     }
     getLabel() {
         return this.label;
@@ -247,7 +248,7 @@ export class InstructionGenerator {
             instructions = instructions.concat(this.generateExpression(expression.expression))
             const size = this.contextStack.peek().getIdentifier(identifier);
             instructions.push(new OpBuilder(Opcode.MOV)
-                .withOperands(RAX, Register.offset(RBP, size))
+                .withOperands(RAX, Register.offset(RBP, -size))
                 .withComment(`\`${identifier}\` assignment`)
                 .build());
 
@@ -256,7 +257,7 @@ export class InstructionGenerator {
             const identifier = expression.identifier;
             const size = this.contextStack.peek().getIdentifier(identifier);
             instructions.push(new OpBuilder(Opcode.MOV)
-                .withOperands(Register.offset(RBP, size), RAX)
+                .withOperands(Register.offset(RBP, -size), RAX)
                 .withComment(`\`${identifier}\` reference`)
                 .build());
 
@@ -279,6 +280,19 @@ export class InstructionGenerator {
             instructions = instructions.concat(this.generateExpression(expression.elseExp));
             instructions.push(new Label(postConditionalLabel));
 
+        } else if (expression instanceof ast.FuncCall) {
+            //gotta put them arguments on the stack
+            for (const argExpression of expression.args) {
+                //TODO should this be in reverse?
+                instructions = instructions.concat(this.generateExpression(argExpression));
+                instructions.push(new OpBuilder(Opcode.PUSH).withOperands(RAX).build());
+            }
+
+            //actually call
+            instructions.push(new OpBuilder(Opcode.CALL).withOperands("_" + expression.identifier).build());
+
+            //roll that stack back TODO: improve this
+            instructions.push(new OpBuilder(Opcode.ADD).withOperands(8, Register.RSP).build());
         }
         return instructions;
     }
@@ -297,7 +311,7 @@ export class InstructionGenerator {
                 instructions = instructions.concat(this.generateExpression(declaration.expression))
                 const size = this.contextStack.peek().getIdentifier(identifier);
                 instructions.push(new OpBuilder(Opcode.MOV)
-                    .withOperands(RAX, Register.offset(RBP, size))
+                    .withOperands(RAX, Register.offset(RBP, -size))
                     .withComment(`\`${identifier}\` assignment`)
                     .build());
             }
@@ -311,14 +325,7 @@ export class InstructionGenerator {
             if (statement.expression) {
                 instructions = instructions.concat(this.generateExpression(statement.expression));
             }
-            const size = this.contextStack.peek().getSize();
-            if (size) {
-                instructions.push(new OpBuilder(Opcode.ADD)
-                    .withOperands(size, RSP)
-                    .withComment(`deallocate ${size} bytes`)
-                    .build());
-            }
-            instructions.push(new OpBuilder(Opcode.RET).withComment(this.contextStack.peek().getLabel() + " - return").build());
+            instructions.push(new OpBuilder(Opcode.JMP).withOperands("_" + this.contextStack.peek().getLabel() + "_return").build());
         } else if (statement instanceof ast.ExpStatement) {
             if (statement.expression)
                 instructions = instructions.concat(this.generateExpression(statement.expression));
@@ -446,17 +453,50 @@ export class InstructionGenerator {
         let instructions: Instruction[] = [];
         instructions.push(new Global("_" + functionDeclaration.identifier));
         instructions.push(new Label("_" + functionDeclaration.identifier));
-        this.contextStack.push(new Context(functionDeclaration.identifier));
+        instructions.push(new OpBuilder(Opcode.PUSH).withOperands(RBP).build())
+        instructions.push(new OpBuilder(Opcode.MOV).withOperands(RSP, RBP).build())
+
+        //arguments?
+        let offset = -8; //TODO: why does this need to start at -8 again? i think that's a bug
+        const identifierMap: VariableMap = new VariableMap();
+        //TODO reverse? this can be faster, but argument lists are usually pretty small
+        for (const arg of functionDeclaration.parameters.reverse()) {
+            offset -= 8;
+            identifierMap.put(arg, offset);
+        }
+
+        this.contextStack.push(new Context(functionDeclaration.identifier, identifierMap));
         for (let blockItem of functionDeclaration.blockItems) {
             instructions = instructions.concat(this.generateBlockItem(blockItem));
         }
+
+        instructions.push(new Label("_" + functionDeclaration.identifier + "_return"));
+
+        //deallocate space if we have any
+        const size = this.contextStack.peek().getSize();
+        if (size) {
+            instructions.push(new OpBuilder(Opcode.ADD)
+                .withOperands(size, RSP)
+                .withComment(`deallocate ${size} bytes`)
+                .build());
+        }
+
+        instructions.push(new OpBuilder(Opcode.MOV).withOperands(RBP, RSP).build())
+        instructions.push(new OpBuilder(Opcode.POP).withOperands(RBP).build())
+        instructions.push(new OpBuilder(Opcode.RET).build())
+
         this.contextStack.pop();
         return instructions
     }
 
-    generate(ast: ast.AST): Instruction[] {
-        const programNode: ast.Program = ast.program;
-        const mainFunction = programNode.functionDeclaration;
-        return this.generateFunctionParts(<ast.Func>mainFunction);
+    generate(tree: ast.AST): Instruction[] {
+        let instructions: Instruction[] = [];
+        const programNode: ast.Program = tree.program;
+        for (const functionDeclaration of programNode.functionDeclarations) {
+            if (functionDeclaration instanceof ast.Func) {
+                instructions = instructions.concat(this.generateFunctionParts(functionDeclaration));
+            }
+        }
+        return instructions
     }
 }
