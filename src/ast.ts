@@ -94,6 +94,15 @@ export class CondExp extends Expression {
         this.elseExp = elseExp;
     }
 }
+export class FuncCall extends Expression {
+    readonly identifier: string;
+    readonly args: Expression[];
+    constructor(identifier: string, args: Expression[]) {
+        super();
+        this.identifier = identifier;
+        this.args = args;
+    }
+}
 
 export abstract class Statement implements Node { }
 export class Return extends Statement {
@@ -192,18 +201,20 @@ export type BlockItem = Statement | Declaration;
 export class FunctionDeclaration implements Node { }
 export class Func extends FunctionDeclaration {
     readonly identifier: string;
+    readonly parameters: string[];
     readonly blockItems: BlockItem[];
-    constructor(identifier: string, blockItems: BlockItem[]) {
+    constructor(identifier: string, parameters: string[], blockItems: BlockItem[]) {
         super();
         this.identifier = identifier;
+        this.parameters = parameters;
         this.blockItems = blockItems;
     }
 }
 
 export class Program implements Node {
-    readonly functionDeclaration: FunctionDeclaration;
-    constructor(functionDeclaration: FunctionDeclaration) {
-        this.functionDeclaration = functionDeclaration;
+    readonly functionDeclarations: FunctionDeclaration[];
+    constructor(functionDeclarations: FunctionDeclaration[]) {
+        this.functionDeclarations = functionDeclarations;
     }
 }
 

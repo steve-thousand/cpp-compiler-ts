@@ -4,6 +4,7 @@
 export enum Opcode {
     ADD = "ADD",
     AND = "AND",
+    CALL = "CALL",
     CDQ = "CDQ",
     CMP = "CMP",
     IDIV = "IDIV",
