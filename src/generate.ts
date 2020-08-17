@@ -1,6 +1,5 @@
 import { ast } from './parser';
 import { Instruction, Opcode, Register, Label, Global, OpBuilder } from './assembly';
-import { FunctionDeclaration } from './ast';
 
 const RAX = Register.RAX;
 const RCX = Register.RCX;
@@ -121,6 +120,7 @@ export class InstructionGenerator {
             //instructions to calculate left and right hand sides
             instructions = instructions.concat(this.generateExpression(expression.left))
 
+            //we push the result of evaluating the left side so that we can retrieve it after evaluating the right side
             instructions.push(new OpBuilder(Opcode.PUSH).withOperands(RAX).build());
             this.contextStack.peek().pushOffset(8);
 
@@ -168,32 +168,32 @@ export class InstructionGenerator {
                 case ast.BinaryOperator.EQUAL:
                     instructions.push(new OpBuilder(Opcode.CMP).withOperands(RCX, RAX).build());
                     instructions.push(new OpBuilder(Opcode.MOV).withOperands(0, RAX).build());
-                    instructions.push(new OpBuilder(Opcode.SETE).withOperands(AL).build());
+                    instructions.push(new OpBuilder(Opcode.SETE).withOperands(AL).withComment("==").build());
                     break;
                 case ast.BinaryOperator.NOT_EQUAL:
                     instructions.push(new OpBuilder(Opcode.CMP).withOperands(RCX, RAX).build());
                     instructions.push(new OpBuilder(Opcode.MOV).withOperands(0, RAX).build());
-                    instructions.push(new OpBuilder(Opcode.SETNE).withOperands(AL).build());
+                    instructions.push(new OpBuilder(Opcode.SETNE).withOperands(AL).withComment("!=").build());
                     break;
                 case ast.BinaryOperator.LESS_THAN:
                     instructions.push(new OpBuilder(Opcode.CMP).withOperands(RCX, RAX).build());
                     instructions.push(new OpBuilder(Opcode.MOV).withOperands(0, RAX).build());
-                    instructions.push(new OpBuilder(Opcode.SETL).withOperands(AL).build());
+                    instructions.push(new OpBuilder(Opcode.SETL).withOperands(AL).withComment("<").build());
                     break;
                 case ast.BinaryOperator.LESS_THAN_OR_EQUAL:
                     instructions.push(new OpBuilder(Opcode.CMP).withOperands(RCX, RAX).build());
                     instructions.push(new OpBuilder(Opcode.MOV).withOperands(0, RAX).build());
-                    instructions.push(new OpBuilder(Opcode.SETLE).withOperands(AL).build());
+                    instructions.push(new OpBuilder(Opcode.SETLE).withOperands(AL).withComment("<=").build());
                     break;
                 case ast.BinaryOperator.GREATER_THAN:
                     instructions.push(new OpBuilder(Opcode.CMP).withOperands(RCX, RAX).build());
                     instructions.push(new OpBuilder(Opcode.MOV).withOperands(0, RAX).build());
-                    instructions.push(new OpBuilder(Opcode.SETG).withOperands(AL).build());
+                    instructions.push(new OpBuilder(Opcode.SETG).withOperands(AL).withComment(">").build());
                     break;
                 case ast.BinaryOperator.GREATER_THAN_OR_EQUAL:
                     instructions.push(new OpBuilder(Opcode.CMP).withOperands(RCX, RAX).build());
                     instructions.push(new OpBuilder(Opcode.MOV).withOperands(0, RAX).build());
-                    instructions.push(new OpBuilder(Opcode.SETGE).withOperands(AL).build());
+                    instructions.push(new OpBuilder(Opcode.SETGE).withOperands(AL).withComment(">=").build());
                     break;
                 case ast.BinaryOperator.OR:
                     let clauseLabel = "_clause_" + id;
