@@ -1,5 +1,5 @@
 import { ast } from './parser';
-import { Instruction, Opcode, Register, Label, Global, OpBuilder } from './assembly';
+import { AsmStatement, Opcode, Register, Label, Global, OpBuilder } from './assembly';
 
 const RAX = Register.RAX;
 const RCX = Register.RCX;
@@ -18,23 +18,30 @@ class UniqueIdGenerator {
 }
 
 /**
- * Keeps a map of variable identifier to current stack frame offset.
+ * Keeps a map of variable identifier to current stack frame offset. Optionally inherits from a 
+ * provided variable map.
  */
 class VariableMap {
     private map: Map<string, number> = new Map();
+    private inherits: VariableMap;
+
+    constructor(inherits?: VariableMap) {
+        this.inherits = inherits;
+    }
 
     public put(identifier: string, offset: number) {
         this.map.set(identifier, offset);
     }
 
     public get(identifier: string): number {
-        return this.map.get(identifier);
-    }
-
-    public deepCopy(): VariableMap {
-        const copy = new VariableMap();
-        copy.map = new Map(this.map); //TODO: make sure this is safe
-        return copy;
+        if (this.map.has(identifier)) {
+            return this.map.get(identifier);
+        } else if (this.inherits) {
+            //if this map does not have it's own ref of identifier, we can make use of the inherited map
+            return this.inherits.get(identifier);
+        } else {
+            return undefined;
+        }
     }
 }
 
@@ -42,24 +49,25 @@ class VariableMap {
  * Keeps information on current stack context. This may be a simple stack frame, or it may be a
  * compound statement inside of a stack frame.
  */
+//TODO technically this is specifically for a compound statement, and always appears to be relevant to a single function call
 class Context {
     private label: string;
     private offset: number = 0;
-    private identifierMap: VariableMap;
+    private variableMap: VariableMap;
     constructor(label: string, identifierMap: VariableMap = new VariableMap()) {
         this.label = label;
-        this.identifierMap = identifierMap;
+        this.variableMap = identifierMap;
     }
     getLabel() {
         return this.label;
     }
     addIdentifier(identifier: string, size: number) {
         this.offset += size;
-        this.identifierMap.put(identifier, this.offset)
+        this.variableMap.put(identifier, this.offset)
         return this.offset;
     }
     getIdentifier(identifier: string) {
-        return this.identifierMap.get(identifier);
+        return this.variableMap.get(identifier);
     }
     pushOffset(offset: number) {
         this, offset += offset;
@@ -73,7 +81,7 @@ class Context {
     makeRelevantChildContext(): Context {
         const context = new Context(this.label);
         context.offset = this.offset;
-        context.identifierMap = this.identifierMap.deepCopy();
+        context.variableMap = new VariableMap(this.variableMap);
         return context;
     }
 }
@@ -94,26 +102,14 @@ class Stack<T> {
     }
 }
 
-/**
- * Context stack actions I would like to perform:
- * 
- * - push new stack frame
- * - pop current stack frame
- * - add identifier(s) to the frame, keeping track of their location relative to this frame's start position
- * - have access to the caller's frame? problematic I guess
- *      - if this is a function call, no
- *      - if this is a compound statement, sure
- *          - maybe compound statements are not new stack frames, just copies of variable maps
- */
-
-export class InstructionGenerator {
+export class AssemblyGenerator {
 
     private uniq = new UniqueIdGenerator();
     private contextStack = new Stack<Context>();
     private loopStack = new Stack<number>(); //will this work when we go to a new function call?
 
-    generateExpression(expression: ast.Expression): Instruction[] {
-        let instructions: Instruction[] = [];
+    generateExpression(expression: ast.Expression): AsmStatement[] {
+        let instructions: AsmStatement[] = [];
         if (expression instanceof ast.BinOp) {
             const id = this.uniq.get();
 
@@ -297,8 +293,8 @@ export class InstructionGenerator {
         return instructions;
     }
 
-    generateDeclaration(declaration: ast.Declaration): Instruction[] {
-        let instructions: Instruction[] = [];
+    generateDeclaration(declaration: ast.Declaration): AsmStatement[] {
+        let instructions: AsmStatement[] = [];
         if (declaration instanceof ast.Declare) {
             const identifier = declaration.identifier;
             this.contextStack.peek().addIdentifier(identifier, 8);
@@ -319,8 +315,8 @@ export class InstructionGenerator {
         return instructions;
     }
 
-    generateStatement(statement: ast.Statement): Instruction[] {
-        let instructions: Instruction[] = [];
+    generateStatement(statement: ast.Statement): AsmStatement[] {
+        let instructions: AsmStatement[] = [];
         if (statement instanceof ast.Return) {
             if (statement.expression) {
                 instructions = instructions.concat(this.generateExpression(statement.expression));
@@ -439,8 +435,8 @@ export class InstructionGenerator {
         return instructions;
     }
 
-    generateBlockItem(blockItem: ast.BlockItem): Instruction[] {
-        let instructions: Instruction[] = [];
+    generateBlockItem(blockItem: ast.BlockItem): AsmStatement[] {
+        let instructions: AsmStatement[] = [];
         if (blockItem instanceof ast.Statement) {
             instructions = instructions.concat(this.generateStatement(blockItem));
         } else if (blockItem instanceof ast.Declaration) {
@@ -449,8 +445,8 @@ export class InstructionGenerator {
         return instructions;
     }
 
-    generateFunctionParts(functionDeclaration: ast.Func): Instruction[] {
-        let instructions: Instruction[] = [];
+    generateFunctionParts(functionDeclaration: ast.Func): AsmStatement[] {
+        let instructions: AsmStatement[] = [];
         instructions.push(new Global("_" + functionDeclaration.identifier));
         instructions.push(new Label("_" + functionDeclaration.identifier));
         instructions.push(new OpBuilder(Opcode.PUSH).withOperands(RBP).build())
@@ -489,8 +485,8 @@ export class InstructionGenerator {
         return instructions
     }
 
-    generate(tree: ast.AST): Instruction[] {
-        let instructions: Instruction[] = [];
+    generate(tree: ast.AST): AsmStatement[] {
+        let instructions: AsmStatement[] = [];
         const programNode: ast.Program = tree.program;
         for (const functionDeclaration of programNode.functionDeclarations) {
             if (functionDeclaration instanceof ast.Func) {

@@ -29,9 +29,6 @@ export enum Opcode {
     XOR = "XOR",
 }
 
-/**
- * Is this really needed anymore?
- */
 enum RegisterIndicator {
     A = "A",
     B = "B",
@@ -120,16 +117,13 @@ export class Register {
     }
 }
 
-/**
- * I should really look into the nomenclature here because I am not entirely sure that every line of code in
- * an assembly program is technically an "instruction". For instance, are labels instructions? How about
- * declaring data like text?
- */
-export interface Instruction {
+export interface AsmStatement {
     toAssembly(): string
 }
 
-export class Global implements Instruction {
+export interface AsmDirective extends AsmStatement { }
+
+export class Global implements AsmDirective {
     readonly global: string;
     constructor(global: string) {
         this.global = global;
@@ -140,7 +134,7 @@ export class Global implements Instruction {
 }
 
 
-export class Label implements Instruction {
+export class Label implements AsmStatement {
     readonly label: string
     constructor(label: string) {
         this.label = label;
@@ -152,7 +146,7 @@ export class Label implements Instruction {
 
 type Operand = number | string | Register;
 
-class Operation implements Instruction {
+class Operation implements AsmStatement {
     opcode: Opcode;
     operands?: Operand[];
     comment?: string;

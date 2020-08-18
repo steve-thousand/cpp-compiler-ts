@@ -2,8 +2,8 @@ import { expect } from 'chai';
 import { Token } from '../src/token';
 import { lex } from '../src/lexer';
 import { parse, ast } from '../src/parser';
-import { InstructionGenerator } from '../src/generate';
-import { Instruction, Opcode, Register, Label, Global, OpBuilder } from '../src/assembly';
+import { AssemblyGenerator } from '../src/generate';
+import { AsmStatement, Opcode, Register, Label, Global, OpBuilder } from '../src/assembly';
 
 
 describe('generator', function () {
@@ -11,7 +11,7 @@ describe('generator', function () {
         it('A simple case', function () {
             const tokens: Token[] = lex("int main() {\n\treturn 2;\n}");
             const tree: ast.AST = parse(tokens);
-            const generated: Instruction[] = new InstructionGenerator().generate(tree);
+            const generated: AsmStatement[] = new AssemblyGenerator().generate(tree);
             expect(generated).to.eql([
                 new Global("_main"),
                 new Label("_main"),
@@ -28,7 +28,7 @@ describe('generator', function () {
         it('Negation', function () {
             const tokens: Token[] = lex("int main() {\n\treturn -5;\n}");
             const tree: ast.AST = parse(tokens);
-            const generated: Instruction[] = new InstructionGenerator().generate(tree);
+            const generated: AsmStatement[] = new AssemblyGenerator().generate(tree);
             expect(generated).to.eql([
                 new Global("_main"),
                 new Label("_main"),
@@ -46,7 +46,7 @@ describe('generator', function () {
         it('Bitwise complement', function () {
             const tokens: Token[] = lex("int main() {\n\treturn ~5;\n}");
             const tree: ast.AST = parse(tokens);
-            const generated: Instruction[] = new InstructionGenerator().generate(tree);
+            const generated: AsmStatement[] = new AssemblyGenerator().generate(tree);
             expect(generated).to.eql([
                 new Global("_main"),
                 new Label("_main"),
@@ -64,7 +64,7 @@ describe('generator', function () {
         it('Logical negation', function () {
             const tokens: Token[] = lex("int main() {\n\treturn !5;\n}");
             const tree: ast.AST = parse(tokens);
-            const generated: Instruction[] = new InstructionGenerator().generate(tree);
+            const generated: AsmStatement[] = new AssemblyGenerator().generate(tree);
             expect(generated).to.eql([
                 new Global("_main"),
                 new Label("_main"),
@@ -84,7 +84,7 @@ describe('generator', function () {
         it('Declaration and reference', function () {
             const tokens: Token[] = lex("int main() {\n\tint a = 0; a = a + 1; return 2 * a;\n}");
             const tree: ast.AST = parse(tokens);
-            const generated: Instruction[] = new InstructionGenerator().generate(tree);
+            const generated: AsmStatement[] = new AssemblyGenerator().generate(tree);
             expect(generated).to.eql([
                 new Global("_main"),
                 new Label("_main"),
@@ -117,7 +117,7 @@ describe('generator', function () {
         it('Compound statements', function () {
             const tokens: Token[] = lex("int main() {\n\tint a = 0; {a = 1; int b = 2;} return a;\n}");
             const tree: ast.AST = parse(tokens);
-            const generated: Instruction[] = new InstructionGenerator().generate(tree);
+            const generated: AsmStatement[] = new AssemblyGenerator().generate(tree);
             expect(generated).to.eql([
                 new Global("_main"),
                 new Label("_main"),
@@ -144,7 +144,7 @@ describe('generator', function () {
         it('Do loop', function () {
             const tokens: Token[] = lex("int main() {\n\tint a = 0; do { a += 3; } while(a < 10); return a;\n}");
             const tree: ast.AST = parse(tokens);
-            const generated: Instruction[] = new InstructionGenerator().generate(tree);
+            const generated: AsmStatement[] = new AssemblyGenerator().generate(tree);
             expect(generated).to.eql([
                 new Global("_main"),
                 new Label("_main"),
@@ -174,7 +174,7 @@ describe('generator', function () {
                 new OpBuilder(Opcode.POP).withOperands(Register.RAX).build(),
                 new OpBuilder(Opcode.CMP).withOperands(Register.RCX, Register.RAX).build(),
                 new OpBuilder(Opcode.MOV).withOperands(0, Register.RAX).build(),
-                new OpBuilder(Opcode.SETL).withOperands(Register.AL).build(),
+                new OpBuilder(Opcode.SETL).withOperands(Register.AL).withComment("<").build(),
                 new OpBuilder(Opcode.CMP).withOperands(0, Register.RAX).build(),
                 new OpBuilder(Opcode.JE).withOperands("_end_loop_1").build(),
                 new OpBuilder(Opcode.JMP).withOperands("_loop_1").build(),
@@ -192,7 +192,7 @@ describe('generator', function () {
         it('Functions', function () {
             const tokens: Token[] = lex("int foo(int a) { return a * 2; } int main() { return foo(4); }");
             const tree: ast.AST = parse(tokens);
-            const generated: Instruction[] = new InstructionGenerator().generate(tree);
+            const generated: AsmStatement[] = new AssemblyGenerator().generate(tree);
             expect(generated).to.eql([
                 new Global("_foo"),
                 new Label("_foo"),

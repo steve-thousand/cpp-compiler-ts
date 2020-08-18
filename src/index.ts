@@ -1,8 +1,8 @@
 import { lex } from './lexer';
 import { parse } from './parser';
-import { InstructionGenerator } from './generate';
+import { AssemblyGenerator } from './generate';
 import * as fs from 'fs';
-import { Instruction } from './assembly';
+import { AsmStatement } from './assembly';
 
 const codeFile = process.argv[2]
 const outFile = process.argv[3]
@@ -10,7 +10,7 @@ const outFile = process.argv[3]
 const code = fs.readFileSync(codeFile, 'utf8');
 const tokens = lex(code);
 const ast = parse(tokens)
-const instructions: Instruction[] = new InstructionGenerator().generate(ast);
+const instructions: AsmStatement[] = new AssemblyGenerator().generate(ast);
 
 const generatedCode = [];
 for (let instruction of instructions) {
