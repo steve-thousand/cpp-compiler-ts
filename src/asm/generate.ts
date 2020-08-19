@@ -1,4 +1,4 @@
-import { ast } from './parser';
+import { ast } from '../ast/parser';
 import { AsmStatement, Opcode, Register, Label, Global, OpBuilder } from './assembly';
 
 const RAX = Register.RAX;
@@ -192,28 +192,28 @@ export class AssemblyGenerator {
                     instructions.push(new OpBuilder(Opcode.SETGE).withOperands(AL).withComment(">=").build());
                     break;
                 case ast.BinaryOperator.OR:
-                    let clauseLabel = "_clause_" + id;
-                    let endLabel = "_end_" + id;
+                    let CLAUSE_LABEL = new Label("_clause_" + id);
+                    let END_LABEL = new Label("_end_" + id);
                     instructions.push(new OpBuilder(Opcode.CMP).withOperands(0, RAX).withComment("|| start").build());
-                    instructions.push(new OpBuilder(Opcode.JE).withOperands(clauseLabel).withComment("|| short circuit").build());
+                    instructions.push(new OpBuilder(Opcode.JE).withOperands(CLAUSE_LABEL).withComment("|| short circuit").build());
                     instructions.push(new OpBuilder(Opcode.MOV).withOperands(1, RAX).build());
-                    instructions.push(new OpBuilder(Opcode.JMP).withOperands(endLabel).build());
-                    instructions.push(new Label(clauseLabel));
+                    instructions.push(new OpBuilder(Opcode.JMP).withOperands(END_LABEL).build());
+                    instructions.push(CLAUSE_LABEL);
                     instructions.push(new OpBuilder(Opcode.MOV).withOperands(RCX, RAX).build());
                     instructions.push(new OpBuilder(Opcode.CMP).withOperands(0, RAX).build());
                     instructions.push(new OpBuilder(Opcode.MOV).withOperands(0, RAX).build());
                     instructions.push(new OpBuilder(Opcode.SETNE).withOperands(AL).withComment("|| end").build());
-                    instructions.push(new Label(endLabel));
+                    instructions.push(END_LABEL);
                     break;
                 case ast.BinaryOperator.AND:
-                    endLabel = "_end_" + id;
+                    END_LABEL = new Label("_end_" + id);
                     instructions.push(new OpBuilder(Opcode.CMP).withOperands(0, RAX).withComment("&& start").build());
-                    instructions.push(new OpBuilder(Opcode.JE).withOperands(endLabel).withComment("&& short circuit").build());
+                    instructions.push(new OpBuilder(Opcode.JE).withOperands(END_LABEL).withComment("&& short circuit").build());
                     instructions.push(new OpBuilder(Opcode.MOV).withOperands(RCX, RAX).build());
                     instructions.push(new OpBuilder(Opcode.CMP).withOperands(0, RAX).build());
                     instructions.push(new OpBuilder(Opcode.MOV).withOperands(0, RAX).build());
                     instructions.push(new OpBuilder(Opcode.SETNE).withOperands(AL).withComment("&& end").build());
-                    instructions.push(new Label(endLabel));
+                    instructions.push(END_LABEL);
                     break;
             }
         } else if (expression instanceof ast.UnOp) {
@@ -231,7 +231,7 @@ export class AssemblyGenerator {
                     break;
                 case ast.UnaryOperator.BITWISE_COMPLEMENT:
                     instructions = instructions.concat(this.generateExpression(expression.expression))
-                    instructions.push(new OpBuilder(Opcode.XOR).withOperands(RAX, "0xFFFF").build());
+                    instructions.push(new OpBuilder(Opcode.XOR).withOperands(RAX, 0xFFFF).build());
                     break;
             }
         } else if (expression instanceof ast.Constant) {
@@ -260,8 +260,8 @@ export class AssemblyGenerator {
         } else if (expression instanceof ast.CondExp) {
 
             const id = this.uniq.get();
-            const postConditionalLabel = "_post_conditional_" + id;
-            const elseLabel = "_else_" + id;
+            const postConditionalLabel = new Label("_post_conditional_" + id);
+            const elseLabel = new Label("_else_" + id);
 
             instructions = instructions.concat(this.generateExpression(expression.condition));
             instructions.push(new OpBuilder(Opcode.CMP).withOperands(0, RAX).withComment("if").build());
@@ -270,11 +270,11 @@ export class AssemblyGenerator {
             //if true
             instructions = instructions.concat(this.generateExpression(expression.ifExp));
             instructions.push(new OpBuilder(Opcode.JMP).withOperands(postConditionalLabel).withComment("if done").build());
-            instructions.push(new Label(elseLabel));
+            instructions.push(elseLabel);
 
             //if false
             instructions = instructions.concat(this.generateExpression(expression.elseExp));
-            instructions.push(new Label(postConditionalLabel));
+            instructions.push(postConditionalLabel);
 
         } else if (expression instanceof ast.FuncCall) {
             //gotta put them arguments on the stack
@@ -285,7 +285,7 @@ export class AssemblyGenerator {
             }
 
             //actually call
-            instructions.push(new OpBuilder(Opcode.CALL).withOperands("_" + expression.identifier).build());
+            instructions.push(new OpBuilder(Opcode.CALL).withOperands(new Label("_" + expression.identifier)).build());
 
             //roll that stack back TODO: improve this
             instructions.push(new OpBuilder(Opcode.ADD).withOperands(8, Register.RSP).build());
@@ -321,28 +321,29 @@ export class AssemblyGenerator {
             if (statement.expression) {
                 instructions = instructions.concat(this.generateExpression(statement.expression));
             }
-            instructions.push(new OpBuilder(Opcode.JMP).withOperands("_" + this.contextStack.peek().getLabel() + "_return").build());
+            instructions.push(new OpBuilder(Opcode.JMP)
+                .withOperands(new Label("_" + this.contextStack.peek().getLabel() + "_return")).build());
         } else if (statement instanceof ast.ExpStatement) {
             if (statement.expression)
                 instructions = instructions.concat(this.generateExpression(statement.expression));
         } else if (statement instanceof ast.Conditional) {
 
-            const id = this.uniq.get();
-            const postConditionalLabel = "_post_conditional_" + id;
-            const elseLabel = "_else_" + id;
+            const ID = this.uniq.get();
+            const POST_CONDITIONAL_LABEL = new Label("_post_conditional_" + ID);
+            const ELSE_LABEL = new Label("_else_" + ID);
 
             instructions = instructions.concat(this.generateExpression(statement.condition));
             instructions.push(new OpBuilder(Opcode.CMP).withOperands(0, RAX).withComment("if").build());
-            instructions.push(new OpBuilder(Opcode.JE).withOperands(statement.elseStatement ? elseLabel : postConditionalLabel).withComment("false").build());
+            instructions.push(new OpBuilder(Opcode.JE).withOperands(statement.elseStatement ? ELSE_LABEL : POST_CONDITIONAL_LABEL).withComment("false").build());
             instructions = instructions.concat(this.generateStatement(statement.ifStatement));
 
             if (statement.elseStatement) {
-                instructions.push(new OpBuilder(Opcode.JMP).withOperands(postConditionalLabel).withComment("if done").build());
-                instructions.push(new Label(elseLabel));
+                instructions.push(new OpBuilder(Opcode.JMP).withOperands(POST_CONDITIONAL_LABEL).withComment("if done").build());
+                instructions.push(ELSE_LABEL);
                 instructions = instructions.concat(this.generateStatement(statement.elseStatement));
             }
 
-            instructions.push(new Label(postConditionalLabel));
+            instructions.push(POST_CONDITIONAL_LABEL);
         } else if (statement instanceof ast.Compound) {
             //time to start a new context! it should contain a deep copy of the parent context's variable map, 
             //but have an offset of 0
@@ -362,8 +363,12 @@ export class AssemblyGenerator {
                     .build());
             }
         } else if (statement instanceof ast.For || statement instanceof ast.ForDecl) {
-            const id = this.uniq.get();
-            this.loopStack.push(id);
+            const ID = this.uniq.get();
+            this.loopStack.push(ID);
+
+            const LOOP_LABEL = new Label("_loop_" + ID);
+            const END_LOOP_LABEL = new Label("_end_loop_" + ID);
+
             if (statement instanceof ast.For) {
                 if (statement.init) {
                     instructions = instructions.concat(this.generateExpression(statement.init));
@@ -371,12 +376,13 @@ export class AssemblyGenerator {
             } else if (statement instanceof ast.ForDecl) {
                 instructions = instructions.concat(this.generateDeclaration(statement.decl));
             }
-            instructions.push(new Label("_loop_" + id));
+
+            instructions.push(LOOP_LABEL);
 
             //evaluate condition to see if we should jump to the end
             instructions = instructions.concat(this.generateExpression(statement.condition));
             instructions.push(new OpBuilder(Opcode.CMP).withOperands(0, RAX).build());
-            instructions.push(new OpBuilder(Opcode.JE).withOperands("_end_loop_" + id).build());
+            instructions.push(new OpBuilder(Opcode.JE).withOperands(END_LOOP_LABEL).build());
 
             //execute body
             instructions = instructions.concat(this.generateStatement(statement.body));
@@ -387,32 +393,40 @@ export class AssemblyGenerator {
             }
 
             //back to top
-            instructions.push(new OpBuilder(Opcode.JMP).withOperands("_loop_" + id).build())
+            instructions.push(new OpBuilder(Opcode.JMP).withOperands(LOOP_LABEL).build())
 
-            instructions.push(new Label("_end_loop_" + id));
+            instructions.push(END_LOOP_LABEL);
             this.loopStack.pop();
         } else if (statement instanceof ast.While) {
-            const id = this.uniq.get();
-            this.loopStack.push(id);
-            instructions.push(new Label("_loop_" + id));
+            const ID = this.uniq.get();
+            this.loopStack.push(ID);
+
+            const LOOP_LABEL = new Label("_loop_" + ID);
+            const END_LOOP_LABEL = new Label("_end_loop_" + ID);
+
+            instructions.push(LOOP_LABEL);
 
             //evaluate condition to see if we should jump to the end
             instructions = instructions.concat(this.generateExpression(statement.condition));
             instructions.push(new OpBuilder(Opcode.CMP).withOperands(0, RAX).build());
-            instructions.push(new OpBuilder(Opcode.JE).withOperands("_end_loop_" + id).build());
+            instructions.push(new OpBuilder(Opcode.JE).withOperands(END_LOOP_LABEL).build());
 
             //execute body
             instructions = instructions.concat(this.generateStatement(statement.body));
 
             //back to top
-            instructions.push(new OpBuilder(Opcode.JMP).withOperands("_loop_" + id).build())
+            instructions.push(new OpBuilder(Opcode.JMP).withOperands(LOOP_LABEL).build())
 
-            instructions.push(new Label("_end_loop_" + id));
+            instructions.push(END_LOOP_LABEL);
             this.loopStack.pop();
         } else if (statement instanceof ast.Do) {
-            const id = this.uniq.get();
-            this.loopStack.push(id);
-            instructions.push(new Label("_loop_" + id));
+            const ID = this.uniq.get();
+            this.loopStack.push(ID);
+
+            const LOOP_LABEL = new Label("_loop_" + ID);
+            const END_LOOP_LABEL = new Label("_end_loop_" + ID);
+
+            instructions.push(LOOP_LABEL);
 
             //execute body
             instructions = instructions.concat(this.generateStatement(statement.body));
@@ -420,17 +434,19 @@ export class AssemblyGenerator {
             //evaluate condition to see if we should jump to the end
             instructions = instructions.concat(this.generateExpression(statement.condition));
             instructions.push(new OpBuilder(Opcode.CMP).withOperands(0, RAX).build());
-            instructions.push(new OpBuilder(Opcode.JE).withOperands("_end_loop_" + id).build());
+            instructions.push(new OpBuilder(Opcode.JE).withOperands(END_LOOP_LABEL).build());
 
             //back to top
-            instructions.push(new OpBuilder(Opcode.JMP).withOperands("_loop_" + id).build())
+            instructions.push(new OpBuilder(Opcode.JMP).withOperands(LOOP_LABEL).build())
 
-            instructions.push(new Label("_end_loop_" + id));
+            instructions.push(END_LOOP_LABEL);
             this.loopStack.pop();
         } else if (statement instanceof ast.Break) {
-            instructions.push(new OpBuilder(Opcode.JMP).withOperands("_end_loop_" + this.loopStack.peek()).build());
+            instructions.push(new OpBuilder(Opcode.JMP)
+                .withOperands(new Label("_end_loop_" + this.loopStack.peek())).build());
         } else if (statement instanceof ast.Continue) {
-            instructions.push(new OpBuilder(Opcode.JMP).withOperands("_loop_" + this.loopStack.peek()).build());
+            instructions.push(new OpBuilder(Opcode.JMP)
+                .withOperands(new Label("_loop_" + this.loopStack.peek())).build());
         }
         return instructions;
     }

@@ -1,7 +1,7 @@
 {
     "scripts": {
         "build": "webpack",
-        "test": "mocha -r ts-node/register test/*.ts"
+        "test": "mocha -r ts-node/register test/**/*.ts"
     },
     "devDependencies": {
         "@types/mocha": "^8.0.1",

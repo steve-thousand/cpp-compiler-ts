@@ -1,14 +1,13 @@
 import { expect } from 'chai';
-import { lex } from '../src/lexer';
-import { parse, ast } from '../src/parser';
-import { BinOp, CondExp, Constant } from '../src/ast';
+import * as tokenize from '../../src/tokenize';
+import * as ast from '../../src/ast';
 
 
-describe('parser', function () {
-    describe('parser()', function () {
+describe('ast.parser', function () {
+    describe('ast.parser()', function () {
         it('A simple case', function () {
-            const tokens = lex("int main() {\n\treturn 2;\n}");
-            const tree = parse(tokens);
+            const tokens = tokenize.lex("int main() {\n\treturn 2;\n}");
+            const tree = ast.parse(tokens);
             expect(new ast.AST(
                 new ast.Program([
                     new ast.Func(
@@ -24,8 +23,8 @@ describe('parser', function () {
         });
 
         it('Return unary negation', function () {
-            const tokens = lex("int main() {\n\treturn -5;\n}");
-            const tree = parse(tokens);
+            const tokens = tokenize.lex("int main() {\n\treturn -5;\n}");
+            const tree = ast.parse(tokens);
             expect(new ast.AST(
                 new ast.Program([
                     new ast.Func(
@@ -44,8 +43,8 @@ describe('parser', function () {
         });
 
         it('Return unary bitwise complement', function () {
-            const tokens = lex("int main() {\n\treturn ~12;\n}");
-            const tree = parse(tokens);
+            const tokens = tokenize.lex("int main() {\n\treturn ~12;\n}");
+            const tree = ast.parse(tokens);
             expect(new ast.AST(
                 new ast.Program([
                     new ast.Func(
@@ -64,8 +63,8 @@ describe('parser', function () {
         });
 
         it('Return unary logical negation', function () {
-            const tokens = lex("int main() {\n\treturn !1;\n}");
-            const tree = parse(tokens);
+            const tokens = tokenize.lex("int main() {\n\treturn !1;\n}");
+            const tree = ast.parse(tokens);
             expect(new ast.AST(
                 new ast.Program([
                     new ast.Func(
@@ -84,8 +83,8 @@ describe('parser', function () {
         });
 
         it('Return binary addition', function () {
-            const tokens = lex("int main() {\n\treturn 2+3;\n}");
-            const tree = parse(tokens);
+            const tokens = tokenize.lex("int main() {\n\treturn 2+3;\n}");
+            const tree = ast.parse(tokens);
             expect(new ast.AST(
                 new ast.Program([
                     new ast.Func(
@@ -105,8 +104,8 @@ describe('parser', function () {
         });
 
         it('Return binary subtraction', function () {
-            const tokens = lex("int main() {\n\treturn 2-3;\n}");
-            const tree = parse(tokens);
+            const tokens = tokenize.lex("int main() {\n\treturn 2-3;\n}");
+            const tree = ast.parse(tokens);
             expect(new ast.AST(
                 new ast.Program([
                     new ast.Func(
@@ -126,8 +125,8 @@ describe('parser', function () {
         });
 
         it('Return binary multiplication', function () {
-            const tokens = lex("int main() {\n\treturn 2*3;\n}");
-            const tree = parse(tokens);
+            const tokens = tokenize.lex("int main() {\n\treturn 2*3;\n}");
+            const tree = ast.parse(tokens);
             expect(new ast.AST(
                 new ast.Program([
                     new ast.Func(
@@ -147,8 +146,8 @@ describe('parser', function () {
         });
 
         it('Return binary division', function () {
-            const tokens = lex("int main() {\n\treturn 2/3;\n}");
-            const tree = parse(tokens);
+            const tokens = tokenize.lex("int main() {\n\treturn 2/3;\n}");
+            const tree = ast.parse(tokens);
             expect(new ast.AST(
                 new ast.Program([
                     new ast.Func(
@@ -168,8 +167,8 @@ describe('parser', function () {
         });
 
         it('Return binary modulo', function () {
-            const tokens = lex("int main() {\n\treturn 2 % 3;\n}");
-            const tree = parse(tokens);
+            const tokens = tokenize.lex("int main() {\n\treturn 2 % 3;\n}");
+            const tree = ast.parse(tokens);
             expect(new ast.AST(
                 new ast.Program([
                     new ast.Func(
@@ -189,8 +188,8 @@ describe('parser', function () {
         });
 
         it('Mixing binary math', function () {
-            const tokens = lex("int main() {\n\treturn 2 + 3 * 4;\n}");
-            const tree = parse(tokens);
+            const tokens = tokenize.lex("int main() {\n\treturn 2 + 3 * 4;\n}");
+            const tree = ast.parse(tokens);
             expect(new ast.AST(
                 new ast.Program([
                     new ast.Func(
@@ -214,8 +213,8 @@ describe('parser', function () {
         });
 
         it('Mixing binary math with parentheses', function () {
-            const tokens = lex("int main() {\n\treturn (2 + 3) * 4;\n}");
-            const tree = parse(tokens);
+            const tokens = tokenize.lex("int main() {\n\treturn (2 + 3) * 4;\n}");
+            const tree = ast.parse(tokens);
             expect(new ast.AST(
                 new ast.Program([
                     new ast.Func(
@@ -239,8 +238,8 @@ describe('parser', function () {
         });
 
         it('Mixing binary math with parentheses again', function () {
-            const tokens = lex("int main() {\n\treturn (5 + 4) / 3;\n}");
-            const tree = parse(tokens);
+            const tokens = tokenize.lex("int main() {\n\treturn (5 + 4) / 3;\n}");
+            const tree = ast.parse(tokens);
             expect(new ast.AST(
                 new ast.Program([
                     new ast.Func(
@@ -264,8 +263,8 @@ describe('parser', function () {
         });
 
         it('Return AND', function () {
-            const tokens = lex("int main() {\n\treturn 2 && 3;\n}");
-            const tree = parse(tokens);
+            const tokens = tokenize.lex("int main() {\n\treturn 2 && 3;\n}");
+            const tree = ast.parse(tokens);
             expect(new ast.AST(
                 new ast.Program([
                     new ast.Func(
@@ -285,8 +284,8 @@ describe('parser', function () {
         });
 
         it('Return OR', function () {
-            const tokens = lex("int main() {\n\treturn 2 || 3;\n}");
-            const tree = parse(tokens);
+            const tokens = tokenize.lex("int main() {\n\treturn 2 || 3;\n}");
+            const tree = ast.parse(tokens);
             expect(new ast.AST(
                 new ast.Program([
                     new ast.Func(
@@ -306,8 +305,8 @@ describe('parser', function () {
         });
 
         it('Return Bitwise AND', function () {
-            const tokens = lex("int main() {\n\treturn 2 & 3;\n}");
-            const tree = parse(tokens);
+            const tokens = tokenize.lex("int main() {\n\treturn 2 & 3;\n}");
+            const tree = ast.parse(tokens);
             expect(new ast.AST(
                 new ast.Program([
                     new ast.Func(
@@ -327,8 +326,8 @@ describe('parser', function () {
         });
 
         it('Return Bitwise OR', function () {
-            const tokens = lex("int main() {\n\treturn 2 | 3;\n}");
-            const tree = parse(tokens);
+            const tokens = tokenize.lex("int main() {\n\treturn 2 | 3;\n}");
+            const tree = ast.parse(tokens);
             expect(new ast.AST(
                 new ast.Program([
                     new ast.Func(
@@ -348,8 +347,8 @@ describe('parser', function () {
         });
 
         it('Return Bitwise XOR', function () {
-            const tokens = lex("int main() {\n\treturn 2 ^ 3;\n}");
-            const tree = parse(tokens);
+            const tokens = tokenize.lex("int main() {\n\treturn 2 ^ 3;\n}");
+            const tree = ast.parse(tokens);
             expect(new ast.AST(
                 new ast.Program([
                     new ast.Func(
@@ -369,8 +368,8 @@ describe('parser', function () {
         });
 
         it('Return Bitwise Shift Left', function () {
-            const tokens = lex("int main() {\n\treturn 2 << 3;\n}");
-            const tree = parse(tokens);
+            const tokens = tokenize.lex("int main() {\n\treturn 2 << 3;\n}");
+            const tree = ast.parse(tokens);
             expect(new ast.AST(
                 new ast.Program([
                     new ast.Func(
@@ -390,8 +389,8 @@ describe('parser', function () {
         });
 
         it('Return Bitwise Shift Right', function () {
-            const tokens = lex("int main() {\n\treturn 2 >> 3;\n}");
-            const tree = parse(tokens);
+            const tokens = tokenize.lex("int main() {\n\treturn 2 >> 3;\n}");
+            const tree = ast.parse(tokens);
             expect(new ast.AST(
                 new ast.Program([
                     new ast.Func(
@@ -411,8 +410,8 @@ describe('parser', function () {
         });
 
         it('Return equal', function () {
-            const tokens = lex("int main() {\n\treturn 2 == 3;\n}");
-            const tree = parse(tokens);
+            const tokens = tokenize.lex("int main() {\n\treturn 2 == 3;\n}");
+            const tree = ast.parse(tokens);
             expect(new ast.AST(
                 new ast.Program([
                     new ast.Func(
@@ -432,8 +431,8 @@ describe('parser', function () {
         });
 
         it('Return not equal', function () {
-            const tokens = lex("int main() {\n\treturn 2 != 3;\n}");
-            const tree = parse(tokens);
+            const tokens = tokenize.lex("int main() {\n\treturn 2 != 3;\n}");
+            const tree = ast.parse(tokens);
             expect(new ast.AST(
                 new ast.Program([
                     new ast.Func(
@@ -453,8 +452,8 @@ describe('parser', function () {
         });
 
         it('Return greater than', function () {
-            const tokens = lex("int main() {\n\treturn 2 > 3;\n}");
-            const tree = parse(tokens);
+            const tokens = tokenize.lex("int main() {\n\treturn 2 > 3;\n}");
+            const tree = ast.parse(tokens);
             expect(new ast.AST(
                 new ast.Program([
                     new ast.Func(
@@ -474,8 +473,8 @@ describe('parser', function () {
         });
 
         it('Return greater than or equal', function () {
-            const tokens = lex("int main() {\n\treturn 2 >= 3;\n}");
-            const tree = parse(tokens);
+            const tokens = tokenize.lex("int main() {\n\treturn 2 >= 3;\n}");
+            const tree = ast.parse(tokens);
             expect(new ast.AST(
                 new ast.Program([
                     new ast.Func(
@@ -495,8 +494,8 @@ describe('parser', function () {
         });
 
         it('Return less than', function () {
-            const tokens = lex("int main() {\n\treturn 2 < 3;\n}");
-            const tree = parse(tokens);
+            const tokens = tokenize.lex("int main() {\n\treturn 2 < 3;\n}");
+            const tree = ast.parse(tokens);
             expect(new ast.AST(
                 new ast.Program([
                     new ast.Func(
@@ -516,8 +515,8 @@ describe('parser', function () {
         });
 
         it('Return less than or equal', function () {
-            const tokens = lex("int main() {\n\treturn 2 <= 3;\n}");
-            const tree = parse(tokens);
+            const tokens = tokenize.lex("int main() {\n\treturn 2 <= 3;\n}");
+            const tree = ast.parse(tokens);
             expect(new ast.AST(
                 new ast.Program([
                     new ast.Func(
@@ -537,8 +536,8 @@ describe('parser', function () {
         });
 
         it('Declaration and reference', function () {
-            const tokens = lex("int main() {\n\tint a = 0; return a;\n}");
-            const tree = parse(tokens);
+            const tokens = tokenize.lex("int main() {\n\tint a = 0; return a;\n}");
+            const tree = ast.parse(tokens);
             expect(new ast.AST(
                 new ast.Program([
                     new ast.Func(
@@ -553,8 +552,8 @@ describe('parser', function () {
         });
 
         it('Declaration, assignment and reference', function () {
-            const tokens = lex("int main() {\n\tint a = 0; a = a + 1; return a;\n}");
-            const tree = parse(tokens);
+            const tokens = tokenize.lex("int main() {\n\tint a = 0; a = a + 1; return a;\n}");
+            const tree = ast.parse(tokens);
             expect(new ast.AST(
                 new ast.Program([
                     new ast.Func(
@@ -575,8 +574,8 @@ describe('parser', function () {
 
         //this comes out to be exactly the same as the previous, which maybe is fine?
         it('Compound assignment', function () {
-            const tokens = lex("int main() {\n\tint a = 2; a += 3; return a;\n}");
-            const tree = parse(tokens);
+            const tokens = tokenize.lex("int main() {\n\tint a = 2; a += 3; return a;\n}");
+            const tree = ast.parse(tokens);
             expect(new ast.AST(
                 new ast.Program([
                     new ast.Func(
@@ -596,8 +595,8 @@ describe('parser', function () {
         });
 
         it('If', function () {
-            const tokens = lex("int main() {\n\tif(1){ a = 2; } return a;\n}");
-            const tree = parse(tokens);
+            const tokens = tokenize.lex("int main() {\n\tif(1){ a = 2; } return a;\n}");
+            const tree = ast.parse(tokens);
             expect(new ast.AST(
                 new ast.Program([
                     new ast.Func(
@@ -617,8 +616,8 @@ describe('parser', function () {
         });
 
         it('Else', function () {
-            const tokens = lex("int main() {\n\tif(1){ a = 2; } else { a = 3; } return a;\n}");
-            const tree = parse(tokens);
+            const tokens = tokenize.lex("int main() {\n\tif(1){ a = 2; } else { a = 3; } return a;\n}");
+            const tree = ast.parse(tokens);
             expect(new ast.AST(
                 new ast.Program([
                     new ast.Func(
@@ -641,15 +640,15 @@ describe('parser', function () {
         });
 
         it('Ternary', function () {
-            const tokens = lex("int main() {\n\treturn 1 ? 2 : 3;\n}");
-            const tree = parse(tokens);
+            const tokens = tokenize.lex("int main() {\n\treturn 1 ? 2 : 3;\n}");
+            const tree = ast.parse(tokens);
             expect(new ast.AST(
                 new ast.Program([
                     new ast.Func(
                         "main", [],
                         [
                             new ast.Return(
-                                new CondExp(new ast.Constant(1), new ast.Constant(2), new ast.Constant(3))
+                                new ast.CondExp(new ast.Constant(1), new ast.Constant(2), new ast.Constant(3))
                             )
                         ]
                     )
@@ -658,17 +657,17 @@ describe('parser', function () {
         });
 
         it('Compound statements', function () {
-            const tokens = lex("int main() {\n\tint a = 0; {a = 1; int b = 2;} return a;\n}");
-            const tree = parse(tokens);
+            const tokens = tokenize.lex("int main() {\n\tint a = 0; {a = 1; int b = 2;} return a;\n}");
+            const tree = ast.parse(tokens);
             expect(new ast.AST(
                 new ast.Program([
                     new ast.Func(
                         "main", [],
                         [
-                            new ast.Declare("a", new Constant(0)),
+                            new ast.Declare("a", new ast.Constant(0)),
                             new ast.Compound([
-                                new ast.ExpStatement(new ast.Assignment("a", new Constant(1))),
-                                new ast.Declare("b", new Constant(2))
+                                new ast.ExpStatement(new ast.Assignment("a", new ast.Constant(1))),
+                                new ast.Declare("b", new ast.Constant(2))
                             ]),
                             new ast.Return(new ast.VarReference("a"))
                         ]
@@ -678,8 +677,8 @@ describe('parser', function () {
         });
 
         it('For loop', function () {
-            const tokens = lex("int main() {\n\tfor(; i < 10; i += 1) {} return 1;\n}");
-            const tree = parse(tokens);
+            const tokens = tokenize.lex("int main() {\n\tfor(; i < 10; i += 1) {} return 1;\n}");
+            const tree = ast.parse(tokens);
             expect(tree).to.eql(new ast.AST(
                 new ast.Program([
                     new ast.Func(
@@ -707,8 +706,8 @@ describe('parser', function () {
         });
 
         it('For declare loop', function () {
-            const tokens = lex("int main() {\n\tfor(int i = 0; i < 10; i += 1) {} return 1;\n}");
-            const tree = parse(tokens);
+            const tokens = tokenize.lex("int main() {\n\tfor(int i = 0; i < 10; i += 1) {} return 1;\n}");
+            const tree = ast.parse(tokens);
             expect(tree).to.eql(new ast.AST(
                 new ast.Program([
                     new ast.Func(
@@ -736,14 +735,14 @@ describe('parser', function () {
         });
 
         it('Do loop', function () {
-            const tokens = lex("int main() {\n\tint a = 0; do { a += 3; } while(a < 10); return a;\n}");
-            const tree = parse(tokens);
+            const tokens = tokenize.lex("int main() {\n\tint a = 0; do { a += 3; } while(a < 10); return a;\n}");
+            const tree = ast.parse(tokens);
             expect(tree).to.eql(new ast.AST(
                 new ast.Program([
                     new ast.Func(
                         "main", [],
                         [
-                            new ast.Declare("a", new Constant(0)),
+                            new ast.Declare("a", new ast.Constant(0)),
                             new ast.Do(
                                 new ast.Compound([
                                     new ast.ExpStatement(new ast.Assignment("a", new ast.BinOp(
@@ -766,8 +765,8 @@ describe('parser', function () {
         });
 
         it('Function declaration', function () {
-            const tokens = lex("int foo(int a) { return a * 2; } int main() {\n\treturn foo(4);\n}");
-            const tree = parse(tokens);
+            const tokens = tokenize.lex("int foo(int a) { return a * 2; } int main() {\n\treturn foo(4);\n}");
+            const tree = ast.parse(tokens);
             expect(tree).to.eql(new ast.AST(
                 new ast.Program([
                     new ast.Func(

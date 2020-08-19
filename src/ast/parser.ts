@@ -1,6 +1,5 @@
-import { Token, TokenType } from './token';
+import { Token, TokenType } from '../tokenize/token';
 import * as ast from './ast';
-import { FunctionDeclaration } from './ast';
 
 export { ast as ast }
 
@@ -128,10 +127,12 @@ function isCompoundAssignment(tokenType: TokenType) {
     }
 }
 
+//TODO: this is still not flexible enough for me
+
 /**
  * Grammar. {} indicates repetition. [] indicates optional. | indicates OR.
  * 
- * <PROGRAM> = <FUNCTION>
+ * <PROGRAM> = { <FUNCTION> }
  * <FUNCTION> = "int" <IDENTIFIER>"(" "int" <id> {["," "int" <id>]}"){" { <BLOCK_ITEM> } "}""
  * <BLOCK_ITEM> = <STATEMENT> | <DECLARATION>
  * <DECLARATION> = "int" IDENTIFIER {"=" <EXPRESSION>} ";"
@@ -158,7 +159,7 @@ function isCompoundAssignment(tokenType: TokenType) {
  */
 const GRAMMAR = {
     PROGRAM: function (tokens: Token[]) {
-        const functionDeclarations: FunctionDeclaration[] = [];
+        const functionDeclarations: ast.FunctionDeclaration[] = [];
         while (tokens.length > 0) {
             const functionDeclaration = this.FUNCTION(tokens);
             functionDeclarations.push(functionDeclaration);

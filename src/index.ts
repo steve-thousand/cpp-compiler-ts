@@ -1,8 +1,7 @@
-import { lex } from './lexer';
-import { parse } from './parser';
-import { AssemblyGenerator } from './generate';
+import { lex } from './tokenize';
+import { parse } from './ast';
+import { AssemblyGenerator, AsmStatement } from './asm';
 import * as fs from 'fs';
-import { AsmStatement } from './assembly';
 
 const codeFile = process.argv[2]
 const outFile = process.argv[3]

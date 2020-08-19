@@ -1,4 +1,8 @@
 /**
+ * https://docs.oracle.com/cd/E26502_01/html/E28388/ennab.html#scrolltoc
+ */
+
+/**
  * These enums don't technically need string values, but it is VERY helpful for debugging.
  */
 export enum Opcode {
@@ -144,7 +148,10 @@ export class Label implements AsmStatement {
     }
 }
 
-type Operand = number | string | Register;
+/**
+ * Valid operands for an instruction.
+ */
+type Operand = number | Register | Label;
 
 class Operation implements AsmStatement {
     opcode: Opcode;
@@ -197,6 +204,8 @@ function lineAndComment(comment, opcode: Opcode, operands: Operand[]): string {
                 operandStrings.push("$" + operand);
             } else if (operand instanceof Register) {
                 operandStrings.push(operand.toAssembly());
+            } else if (operand instanceof Label) {
+                operandStrings.push(operand.label);
             } else {
                 operandStrings.push(operand);
             }
