@@ -5,6 +5,7 @@ You don't need to read this stop reading this.
 ## Caveats
 
 * you shouldn't use this
+* x86 assembly, defaults to AT&T (sorry)
 * it is currently hard coded for 64 bit architecture
 * it only supports a subset of C++ features
 * it breaks easily
