@@ -51,7 +51,7 @@ describe('generator', function () {
                 new asm.OpBuilder(asm.Opcode.PUSH).withOperands(asm.Register.RBP).build(),
                 new asm.OpBuilder(asm.Opcode.MOV).withOperands(asm.Register.RSP, asm.Register.RBP).build(),
                 new asm.OpBuilder(asm.Opcode.MOV).withOperands(5, asm.Register.RAX).build(),
-                new asm.OpBuilder(asm.Opcode.XOR).withOperands(asm.Register.RAX, 0xFFFF).build(),
+                new asm.OpBuilder(asm.Opcode.XOR).withOperands(asm.Register.RAX, new asm.ImmediateHex("FFFF")).build(),
                 new asm.OpBuilder(asm.Opcode.JMP).withOperands(new asm.Label("_main_return")).build(),
                 new asm.Label("_main_return"),
                 new asm.OpBuilder(asm.Opcode.MOV).withOperands(asm.Register.RBP, asm.Register.RSP).build(),

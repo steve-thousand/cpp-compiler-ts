@@ -1,5 +1,5 @@
 import { ast } from '../ast/parser';
-import { AsmStatement, Opcode, Register, Label, Global, OpBuilder } from './assembly';
+import { AsmStatement, Opcode, Register, Label, Global, OpBuilder, ImmediateHex } from './assembly';
 
 const RAX = Register.RAX;
 const RCX = Register.RCX;
@@ -231,7 +231,7 @@ export class AssemblyGenerator {
                     break;
                 case ast.UnaryOperator.BITWISE_COMPLEMENT:
                     instructions = instructions.concat(this.generateExpression(expression.expression))
-                    instructions.push(new OpBuilder(Opcode.XOR).withOperands(RAX, 0xFFFF).build());
+                    instructions.push(new OpBuilder(Opcode.XOR).withOperands(RAX, new ImmediateHex("FFFF")).build());
                     break;
             }
         } else if (expression instanceof ast.Constant) {
